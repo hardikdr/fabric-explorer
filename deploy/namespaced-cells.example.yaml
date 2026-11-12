@@ -1,0 +1,26 @@
+# Alternative to cluster-wide Cell permissions in deployment.yaml:
+# Remove 'cells' from that ClusterRole, set --cell-namespaces=fabric-lab,
+# and grant this Role in each allowed namespace. Cluster-scoped reads still apply.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: fabric-explorer-cell-reader
+  namespace: fabric-lab
+rules:
+  - apiGroups: [fabric.ironcore.dev]
+    resources: [cells]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: fabric-explorer-cell-reader
+  namespace: fabric-lab
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: fabric-explorer-cell-reader
+subjects:
+  - kind: ServiceAccount
+    name: fabric-explorer
+    namespace: fabric-explorer

@@ -1,0 +1,856 @@
+{
+  "resources": {
+    "switches": [
+      {
+        "apiVersion": "sonic.networking.metal.ironcore.dev/v1alpha1",
+        "kind": "Switch",
+        "metadata": {
+          "name": "spine-1",
+          "uid": "cd6c6165-afe2-56c0-8354-a03fc4ffe686",
+          "generation": 1,
+          "resourceVersion": "100",
+          "labels": {
+            "app.kubernetes.io/part-of": "fixture-clos"
+          }
+        },
+        "spec": {
+          "hostname": "spine-1.clos.example",
+          "macAddress": "02:00:00:00:01:01",
+          "management": {
+            "host": "192.0.2.11",
+            "port": "22"
+          },
+          "ports": [
+            {
+              "name": "Ethernet0"
+            },
+            {
+              "name": "Ethernet4"
+            }
+          ],
+          "containers": [
+            {
+              "name": "fabriclet",
+              "image": "ghcr.io/ironcore-dev/fabriclet-sonic:example",
+              "args": [
+                "--name",
+                "spine-1",
+                "--kubeconfig=/private/credentials"
+              ]
+            }
+          ]
+        },
+        "status": {
+          "state": "Ready",
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "True",
+              "reason": "ZTPConfigured",
+              "message": "Provisioning declaration accepted",
+              "lastTransitionTime": "2026-11-09T10:00:00Z",
+              "observedGeneration": 1
+            }
+          ]
+        }
+      },
+      {
+        "apiVersion": "sonic.networking.metal.ironcore.dev/v1alpha1",
+        "kind": "Switch",
+        "metadata": {
+          "name": "spine-2",
+          "uid": "79971d27-d23a-525f-9e69-51a7235914b0",
+          "generation": 1,
+          "resourceVersion": "100",
+          "labels": {
+            "app.kubernetes.io/part-of": "fixture-clos"
+          }
+        },
+        "spec": {
+          "hostname": "spine-2.clos.example",
+          "macAddress": "02:00:00:00:01:02",
+          "management": {
+            "host": "192.0.2.12",
+            "port": "22"
+          },
+          "ports": [
+            {
+              "name": "Ethernet0"
+            },
+            {
+              "name": "Ethernet4"
+            }
+          ],
+          "containers": [
+            {
+              "name": "fabriclet",
+              "image": "ghcr.io/ironcore-dev/fabriclet-sonic:example",
+              "args": [
+                "--name",
+                "spine-2",
+                "--kubeconfig=/private/credentials"
+              ]
+            }
+          ]
+        },
+        "status": {
+          "state": "Ready",
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "True",
+              "reason": "ZTPConfigured",
+              "message": "Provisioning declaration accepted",
+              "lastTransitionTime": "2026-11-09T10:00:00Z",
+              "observedGeneration": 1
+            }
+          ]
+        }
+      },
+      {
+        "apiVersion": "sonic.networking.metal.ironcore.dev/v1alpha1",
+        "kind": "Switch",
+        "metadata": {
+          "name": "leaf-1",
+          "uid": "8e10efa5-71cc-5c6a-a5e0-f9605ab8ad4c",
+          "generation": 1,
+          "resourceVersion": "100",
+          "labels": {
+            "app.kubernetes.io/part-of": "fixture-clos"
+          }
+        },
+        "spec": {
+          "hostname": "leaf-1.clos.example",
+          "macAddress": "02:00:00:00:02:01",
+          "management": {
+            "host": "192.0.2.21",
+            "port": "22"
+          },
+          "ports": [
+            {
+              "name": "Ethernet0"
+            },
+            {
+              "name": "Ethernet4"
+            },
+            {
+              "name": "Ethernet8"
+            },
+            {
+              "name": "Ethernet12"
+            }
+          ],
+          "containers": [
+            {
+              "name": "fabriclet",
+              "image": "ghcr.io/ironcore-dev/fabriclet-sonic:example",
+              "args": [
+                "--name",
+                "leaf-1",
+                "--kubeconfig=/private/credentials"
+              ]
+            }
+          ]
+        },
+        "status": {
+          "state": "Ready",
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "True",
+              "reason": "ZTPConfigured",
+              "message": "Provisioning declaration accepted",
+              "lastTransitionTime": "2026-11-09T10:00:00Z",
+              "observedGeneration": 1
+            }
+          ]
+        }
+      },
+      {
+        "apiVersion": "sonic.networking.metal.ironcore.dev/v1alpha1",
+        "kind": "Switch",
+        "metadata": {
+          "name": "leaf-2",
+          "uid": "f1fbf6df-e9df-53d4-9fa1-3444203f50f2",
+          "generation": 1,
+          "resourceVersion": "100",
+          "labels": {
+            "app.kubernetes.io/part-of": "fixture-clos"
+          }
+        },
+        "spec": {
+          "hostname": "leaf-2.clos.example",
+          "macAddress": "02:00:00:00:02:02",
+          "management": {
+            "host": "192.0.2.22",
+            "port": "22"
+          },
+          "ports": [
+            {
+              "name": "Ethernet0"
+            },
+            {
+              "name": "Ethernet4"
+            },
+            {
+              "name": "Ethernet8"
+            },
+            {
+              "name": "Ethernet12"
+            }
+          ],
+          "containers": [
+            {
+              "name": "fabriclet",
+              "image": "ghcr.io/ironcore-dev/fabriclet-sonic:example",
+              "args": [
+                "--name",
+                "leaf-2",
+                "--kubeconfig=/private/credentials"
+              ]
+            }
+          ]
+        },
+        "status": {
+          "state": "Ready",
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "True",
+              "reason": "ZTPConfigured",
+              "message": "Provisioning declaration accepted",
+              "lastTransitionTime": "2026-11-09T10:00:00Z",
+              "observedGeneration": 1
+            }
+          ]
+        }
+      }
+    ],
+    "nodes": [
+      {
+        "apiVersion": "fabric.ironcore.dev/v1alpha1",
+        "kind": "Node",
+        "metadata": {
+          "name": "spine-1",
+          "uid": "76ca641e-50b2-565c-a732-329a40b447f5",
+          "generation": 1,
+          "resourceVersion": "100",
+          "labels": {
+            "app.kubernetes.io/part-of": "fixture-clos"
+          }
+        },
+        "spec": {
+          "providerID": "sonic://spine-1",
+          "cellRef": {
+            "namespace": "fabric-lab",
+            "name": "spine-1-config",
+            "uid": "ee88b026-ba61-5c81-bdb9-6a6bb5ede675"
+          }
+        },
+        "status": {
+          "conditions": []
+        }
+      },
+      {
+        "apiVersion": "fabric.ironcore.dev/v1alpha1",
+        "kind": "Node",
+        "metadata": {
+          "name": "spine-2",
+          "uid": "3af21803-9262-5916-9209-14cfddd1d843",
+          "generation": 1,
+          "resourceVersion": "100",
+          "labels": {
+            "app.kubernetes.io/part-of": "fixture-clos"
+          }
+        },
+        "spec": {
+          "providerID": "sonic://spine-2",
+          "cellRef": {
+            "namespace": "fabric-lab",
+            "name": "spine-2-config",
+            "uid": "9015d18e-fdbb-57ef-969e-2f483732b62a"
+          }
+        },
+        "status": {
+          "conditions": []
+        }
+      },
+      {
+        "apiVersion": "fabric.ironcore.dev/v1alpha1",
+        "kind": "Node",
+        "metadata": {
+          "name": "leaf-1",
+          "uid": "2594f7e1-5c1a-597f-8f67-3117b7b1d0fb",
+          "generation": 1,
+          "resourceVersion": "100",
+          "labels": {
+            "app.kubernetes.io/part-of": "fixture-clos"
+          }
+        },
+        "spec": {
+          "providerID": "sonic://leaf-1",
+          "cellRef": {
+            "namespace": "fabric-lab",
+            "name": "leaf-1-config",
+            "uid": "1e2f58fd-fbb6-51fa-aa7d-c754094cee89"
+          }
+        },
+        "status": {
+          "conditions": []
+        }
+      },
+      {
+        "apiVersion": "fabric.ironcore.dev/v1alpha1",
+        "kind": "Node",
+        "metadata": {
+          "name": "leaf-2",
+          "uid": "e8012f3b-31c8-5766-a424-590de286b1f8",
+          "generation": 1,
+          "resourceVersion": "100",
+          "labels": {
+            "app.kubernetes.io/part-of": "fixture-clos"
+          }
+        },
+        "spec": {
+          "providerID": "sonic://leaf-2",
+          "cellRef": {
+            "namespace": "fabric-lab",
+            "name": "leaf-2-config",
+            "uid": "cdc669ec-1d70-5908-bdb2-55f3a0b507d4"
+          }
+        },
+        "status": {
+          "conditions": []
+        }
+      }
+    ],
+    "interfaces": [
+      {
+        "apiVersion": "fabric.ironcore.dev/v1alpha1",
+        "kind": "Interface",
+        "metadata": {
+          "name": "spine-1-ethernet0",
+          "uid": "fc39178a-c7d7-55b2-bddd-6befa9eff57a",
+          "generation": 1,
+          "resourceVersion": "100",
+          "labels": {
+            "app.kubernetes.io/part-of": "fixture-clos"
+          }
+        },
+        "spec": {
+          "nodeRef": {
+            "name": "spine-1"
+          },
+          "handle": "sonic://Ethernet0",
+          "adminState": "Up"
+        },
+        "status": {
+          "operationState": "Up",
+          "conditions": []
+        }
+      },
+      {
+        "apiVersion": "fabric.ironcore.dev/v1alpha1",
+        "kind": "Interface",
+        "metadata": {
+          "name": "spine-1-ethernet4",
+          "uid": "486e2698-0f3e-53a3-8e88-d281cee0ad9a",
+          "generation": 1,
+          "resourceVersion": "100",
+          "labels": {
+            "app.kubernetes.io/part-of": "fixture-clos"
+          }
+        },
+        "spec": {
+          "nodeRef": {
+            "name": "spine-1"
+          },
+          "handle": "sonic://Ethernet4",
+          "adminState": "Up"
+        },
+        "status": {
+          "operationState": "Up",
+          "conditions": []
+        }
+      },
+      {
+        "apiVersion": "fabric.ironcore.dev/v1alpha1",
+        "kind": "Interface",
+        "metadata": {
+          "name": "spine-2-ethernet0",
+          "uid": "4e737cee-79d1-56e7-83be-69ee7630f6ce",
+          "generation": 1,
+          "resourceVersion": "100",
+          "labels": {
+            "app.kubernetes.io/part-of": "fixture-clos"
+          }
+        },
+        "spec": {
+          "nodeRef": {
+            "name": "spine-2"
+          },
+          "handle": "sonic://Ethernet0",
+          "adminState": "Up"
+        },
+        "status": {
+          "operationState": "Up",
+          "conditions": []
+        }
+      },
+      {
+        "apiVersion": "fabric.ironcore.dev/v1alpha1",
+        "kind": "Interface",
+        "metadata": {
+          "name": "spine-2-ethernet4",
+          "uid": "d592053c-3625-5f66-92ed-30c53f063eab",
+          "generation": 1,
+          "resourceVersion": "100",
+          "labels": {
+            "app.kubernetes.io/part-of": "fixture-clos"
+          }
+        },
+        "spec": {
+          "nodeRef": {
+            "name": "spine-2"
+          },
+          "handle": "sonic://Ethernet4",
+          "adminState": "Up"
+        },
+        "status": {
+          "operationState": "Up",
+          "conditions": []
+        }
+      },
+      {
+        "apiVersion": "fabric.ironcore.dev/v1alpha1",
+        "kind": "Interface",
+        "metadata": {
+          "name": "leaf-1-ethernet0",
+          "uid": "9984141f-edea-50b6-b18a-d33dc915a3db",
+          "generation": 1,
+          "resourceVersion": "100",
+          "labels": {
+            "app.kubernetes.io/part-of": "fixture-clos"
+          }
+        },
+        "spec": {
+          "nodeRef": {
+            "name": "leaf-1"
+          },
+          "handle": "sonic://Ethernet0",
+          "adminState": "Up"
+        },
+        "status": {
+          "operationState": "Up",
+          "conditions": []
+        }
+      },
+      {
+        "apiVersion": "fabric.ironcore.dev/v1alpha1",
+        "kind": "Interface",
+        "metadata": {
+          "name": "leaf-1-ethernet4",
+          "uid": "39dde587-e733-5100-9b72-96c2e411b441",
+          "generation": 1,
+          "resourceVersion": "100",
+          "labels": {
+            "app.kubernetes.io/part-of": "fixture-clos"
+          }
+        },
+        "spec": {
+          "nodeRef": {
+            "name": "leaf-1"
+          },
+          "handle": "sonic://Ethernet4",
+          "adminState": "Up"
+        },
+        "status": {
+          "operationState": "Up",
+          "conditions": []
+        }
+      },
+      {
+        "apiVersion": "fabric.ironcore.dev/v1alpha1",
+        "kind": "Interface",
+        "metadata": {
+          "name": "leaf-1-ethernet8",
+          "uid": "51b71a15-481b-54b3-9d80-f2281ad851ed",
+          "generation": 1,
+          "resourceVersion": "100",
+          "labels": {
+            "app.kubernetes.io/part-of": "fixture-clos"
+          }
+        },
+        "spec": {
+          "nodeRef": {
+            "name": "leaf-1"
+          },
+          "handle": "sonic://Ethernet8",
+          "adminState": "Up"
+        },
+        "status": {
+          "operationState": "Up",
+          "conditions": []
+        }
+      },
+      {
+        "apiVersion": "fabric.ironcore.dev/v1alpha1",
+        "kind": "Interface",
+        "metadata": {
+          "name": "leaf-1-ethernet12",
+          "uid": "0962bdb3-0f3d-5cea-a97c-36b78e0f42c3",
+          "generation": 1,
+          "resourceVersion": "100",
+          "labels": {
+            "app.kubernetes.io/part-of": "fixture-clos"
+          }
+        },
+        "spec": {
+          "nodeRef": {
+            "name": "leaf-1"
+          },
+          "handle": "sonic://Ethernet12",
+          "adminState": "Up"
+        },
+        "status": {
+          "operationState": "Unknown",
+          "conditions": []
+        }
+      },
+      {
+        "apiVersion": "fabric.ironcore.dev/v1alpha1",
+        "kind": "Interface",
+        "metadata": {
+          "name": "leaf-2-ethernet0",
+          "uid": "0bde23bf-55c8-5778-a0eb-373526f3f7d3",
+          "generation": 1,
+          "resourceVersion": "100",
+          "labels": {
+            "app.kubernetes.io/part-of": "fixture-clos"
+          }
+        },
+        "spec": {
+          "nodeRef": {
+            "name": "leaf-2"
+          },
+          "handle": "sonic://Ethernet0",
+          "adminState": "Up"
+        },
+        "status": {
+          "operationState": "Up",
+          "conditions": []
+        }
+      },
+      {
+        "apiVersion": "fabric.ironcore.dev/v1alpha1",
+        "kind": "Interface",
+        "metadata": {
+          "name": "leaf-2-ethernet4",
+          "uid": "0527d8a7-dc18-58ea-9cf0-2da6cf2b53f4",
+          "generation": 1,
+          "resourceVersion": "100",
+          "labels": {
+            "app.kubernetes.io/part-of": "fixture-clos"
+          }
+        },
+        "spec": {
+          "nodeRef": {
+            "name": "leaf-2"
+          },
+          "handle": "sonic://Ethernet4",
+          "adminState": "Up"
+        },
+        "status": {
+          "operationState": "Up",
+          "conditions": []
+        }
+      },
+      {
+        "apiVersion": "fabric.ironcore.dev/v1alpha1",
+        "kind": "Interface",
+        "metadata": {
+          "name": "leaf-2-ethernet8",
+          "uid": "1ad4881f-0a37-59ce-b0ba-2a1533992e1e",
+          "generation": 1,
+          "resourceVersion": "100",
+          "labels": {
+            "app.kubernetes.io/part-of": "fixture-clos"
+          }
+        },
+        "spec": {
+          "nodeRef": {
+            "name": "leaf-2"
+          },
+          "handle": "sonic://Ethernet8",
+          "adminState": "Up"
+        },
+        "status": {
+          "operationState": "Up",
+          "conditions": []
+        }
+      },
+      {
+        "apiVersion": "fabric.ironcore.dev/v1alpha1",
+        "kind": "Interface",
+        "metadata": {
+          "name": "leaf-2-ethernet12",
+          "uid": "b8dcd5b6-aa9d-5b73-abc3-a97e0e9e1bed",
+          "generation": 1,
+          "resourceVersion": "100",
+          "labels": {
+            "app.kubernetes.io/part-of": "fixture-clos"
+          }
+        },
+        "spec": {
+          "nodeRef": {
+            "name": "leaf-2"
+          },
+          "handle": "sonic://Ethernet12",
+          "adminState": "Up"
+        },
+        "status": {
+          "operationState": "Unknown",
+          "conditions": []
+        }
+      }
+    ],
+    "cells": [
+      {
+        "apiVersion": "fabric.ironcore.dev/v1alpha1",
+        "kind": "Cell",
+        "metadata": {
+          "name": "spine-1-config",
+          "uid": "ee88b026-ba61-5c81-bdb9-6a6bb5ede675",
+          "generation": 1,
+          "resourceVersion": "100",
+          "labels": {
+            "app.kubernetes.io/part-of": "fixture-clos",
+            "fabric.ironcore.dev/role": "spine"
+          },
+          "namespace": "fabric-lab"
+        },
+        "spec": {
+          "nodeRef": {
+            "name": "spine-1"
+          },
+          "id": "1",
+          "hostname": "spine-1",
+          "ips": [
+            "2001:db8:1::1"
+          ],
+          "prefixes": [],
+          "peers": [
+            {
+              "interfaceRef": {
+                "name": "spine-1-ethernet0"
+              }
+            },
+            {
+              "interfaceRef": {
+                "name": "spine-1-ethernet4"
+              }
+            }
+          ]
+        },
+        "status": {
+          "phase": "Active",
+          "conditions": [
+            {
+              "type": "Bound",
+              "status": "True",
+              "reason": "Claimed",
+              "message": "Cell claimed by Fabriclet",
+              "lastTransitionTime": "2026-11-09T10:00:00Z",
+              "observedGeneration": 1
+            }
+          ]
+        }
+      },
+      {
+        "apiVersion": "fabric.ironcore.dev/v1alpha1",
+        "kind": "Cell",
+        "metadata": {
+          "name": "spine-2-config",
+          "uid": "9015d18e-fdbb-57ef-969e-2f483732b62a",
+          "generation": 1,
+          "resourceVersion": "100",
+          "labels": {
+            "app.kubernetes.io/part-of": "fixture-clos",
+            "fabric.ironcore.dev/role": "spine"
+          },
+          "namespace": "fabric-lab"
+        },
+        "spec": {
+          "nodeRef": {
+            "name": "spine-2"
+          },
+          "id": "2",
+          "hostname": "spine-2",
+          "ips": [
+            "2001:db8:1::2"
+          ],
+          "prefixes": [],
+          "peers": [
+            {
+              "interfaceRef": {
+                "name": "spine-2-ethernet0"
+              }
+            },
+            {
+              "interfaceRef": {
+                "name": "spine-2-ethernet4"
+              }
+            }
+          ]
+        },
+        "status": {
+          "phase": "Active",
+          "conditions": [
+            {
+              "type": "Bound",
+              "status": "True",
+              "reason": "Claimed",
+              "message": "Cell claimed by Fabriclet",
+              "lastTransitionTime": "2026-11-09T10:00:00Z",
+              "observedGeneration": 1
+            }
+          ]
+        }
+      },
+      {
+        "apiVersion": "fabric.ironcore.dev/v1alpha1",
+        "kind": "Cell",
+        "metadata": {
+          "name": "leaf-1-config",
+          "uid": "1e2f58fd-fbb6-51fa-aa7d-c754094cee89",
+          "generation": 1,
+          "resourceVersion": "100",
+          "labels": {
+            "app.kubernetes.io/part-of": "fixture-clos",
+            "fabric.ironcore.dev/role": "leaf"
+          },
+          "namespace": "fabric-lab"
+        },
+        "spec": {
+          "nodeRef": {
+            "name": "leaf-1"
+          },
+          "id": "1",
+          "hostname": "leaf-1",
+          "ips": [
+            "2001:db8:2::1"
+          ],
+          "prefixes": [
+            "10.1.0.0/16",
+            "10.1.1.0/24",
+            "10.1.2.0/24"
+          ],
+          "peers": [
+            {
+              "interfaceRef": {
+                "name": "leaf-1-ethernet0"
+              }
+            },
+            {
+              "interfaceRef": {
+                "name": "leaf-1-ethernet4"
+              }
+            },
+            {
+              "interfaceRef": {
+                "name": "leaf-1-ethernet8"
+              },
+              "dhcpRelay": "2001:db8::53"
+            },
+            {
+              "interfaceRef": {
+                "name": "leaf-1-ethernet12"
+              },
+              "dhcpRelay": "2001:db8::53"
+            }
+          ]
+        },
+        "status": {
+          "phase": "Active",
+          "conditions": [
+            {
+              "type": "Bound",
+              "status": "True",
+              "reason": "Claimed",
+              "message": "Cell claimed by Fabriclet",
+              "lastTransitionTime": "2026-11-09T10:00:00Z",
+              "observedGeneration": 1
+            }
+          ]
+        }
+      },
+      {
+        "apiVersion": "fabric.ironcore.dev/v1alpha1",
+        "kind": "Cell",
+        "metadata": {
+          "name": "leaf-2-config",
+          "uid": "cdc669ec-1d70-5908-bdb2-55f3a0b507d4",
+          "generation": 1,
+          "resourceVersion": "100",
+          "labels": {
+            "app.kubernetes.io/part-of": "fixture-clos",
+            "fabric.ironcore.dev/role": "leaf"
+          },
+          "namespace": "fabric-lab"
+        },
+        "spec": {
+          "nodeRef": {
+            "name": "leaf-2"
+          },
+          "id": "2",
+          "hostname": "leaf-2",
+          "ips": [
+            "2001:db8:2::2"
+          ],
+          "prefixes": [
+            "10.2.0.0/16",
+            "10.2.1.0/24",
+            "10.2.2.0/24"
+          ],
+          "peers": [
+            {
+              "interfaceRef": {
+                "name": "leaf-2-ethernet0"
+              }
+            },
+            {
+              "interfaceRef": {
+                "name": "leaf-2-ethernet4"
+              }
+            },
+            {
+              "interfaceRef": {
+                "name": "leaf-2-ethernet8"
+              },
+              "dhcpRelay": "2001:db8::53"
+            },
+            {
+              "interfaceRef": {
+                "name": "leaf-2-ethernet12"
+              },
+              "dhcpRelay": "2001:db8::53"
+            }
+          ]
+        },
+        "status": {
+          "phase": "Active",
+          "conditions": [
+            {
+              "type": "Bound",
+              "status": "True",
+              "reason": "Claimed",
+              "message": "Cell claimed by Fabriclet",
+              "lastTransitionTime": "2026-11-09T10:00:00Z",
+              "observedGeneration": 1
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

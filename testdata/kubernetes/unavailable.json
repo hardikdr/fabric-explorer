@@ -1,0 +1,14 @@
+{
+  "resources": {
+    "switches": [],
+    "nodes": [],
+    "interfaces": [],
+    "cells": []
+  },
+  "sourceErrors": {
+    "switches": "forbidden",
+    "nodes": "missing-crd",
+    "cells": "unavailable",
+    "interfaces": "unavailable"
+  }
+}
