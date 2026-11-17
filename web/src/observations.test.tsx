@@ -5,6 +5,7 @@ import {
   LLDPPanel,
   VLANPanel,
   ObservationFleet,
+  ContainersPanel,
 } from "./ObservedPanels";
 import {
   domainState,
@@ -57,6 +58,7 @@ function observation(): ObservedSwitch {
       },
     ]),
     vlans: domain([]),
+    containers: domain([]),
   };
 }
 describe("operational samples", () => {
@@ -81,7 +83,8 @@ describe("operational samples", () => {
     expect(screen.getByText("Idle")).toBeInTheDocument();
     expect(screen.getByText("Ethernet120")).toBeInTheDocument();
     expect(screen.queryByText("Established")).not.toBeInTheDocument();
-    expect(screen.getByText(/Received Not reported/)).toBeInTheDocument();
+    // Prefix counts shown as ↓? ↑? when unknown
+    expect(screen.getByText(/↓\?/)).toBeInTheDocument();
   });
   it("shows LLDP identity evidence and VLAN empty semantics", () => {
     const o = observation();
@@ -93,9 +96,6 @@ describe("operational samples", () => {
     );
     expect(screen.getByText(/00:11:22:33:44:66/)).toBeInTheDocument();
     expect(screen.getByText(/No VLAN entries returned/)).toBeInTheDocument();
-    expect(
-      screen.getByText(/forwarding state was not measured/),
-    ).toBeInTheDocument();
   });
   it("never attaches observations from a different Switch UID", () => {
     const o = observation();
@@ -110,7 +110,7 @@ describe("operational samples", () => {
         onClose={vi.fn()}
       />,
     );
-    fireEvent.click(screen.getByRole("tab", { name: /BGP Sessions/i }));
+    fireEvent.click(screen.getByRole("tab", { name: /BGP/i }));
     expect(screen.queryByText("Ethernet120")).not.toBeInTheDocument();
     expect(screen.queryByText("Idle")).not.toBeInTheDocument();
   });
@@ -132,7 +132,7 @@ describe("operational samples", () => {
         error="Refresh failed"
       />,
     );
-    expect(screen.getByText("CAPTURE REPLAY")).toBeInTheDocument();
+    expect(screen.getByText("REPLAY")).toBeInTheDocument();
     expect(screen.getByText("authentication")).toBeInTheDocument();
   });
 });
@@ -163,4 +163,84 @@ it("suppresses cached physical links after expiry or identity conflict", () => {
   expect(eligibleLinks(snapshot, Date.now() + 91000)).toHaveLength(0);
   b.identityState = "mismatch";
   expect(eligibleLinks(snapshot)).toHaveLength(0);
+});
+
+describe("ContainersPanel", () => {
+  it("shows container list and does not expose logs without a click", () => {
+    const o = observation();
+    o.containers = {
+      state: "ready",
+      complete: true,
+      sampledAt: new Date().toISOString(),
+      data: [
+        {
+          id: "24d51a09a9a1",
+          name: "telemetry",
+          image: "docker-sonic-telemetry:latest",
+          state: "running",
+          status: "Up 6 days",
+          createdAt: "2026-11-10 12:35:04 +0000 UTC",
+          runningFor: "6 days ago",
+        },
+        {
+          id: "6d86073abfd8",
+          name: "fabriclet-sonic",
+          image: "ghcr.io/hardikdr/fabriclet-sonic:configdb-bgp-v2",
+          state: "running",
+          status: "Up 6 days",
+          createdAt: "2026-11-10 12:31:43 +0000 UTC",
+          runningFor: "6 days ago",
+        },
+      ],
+    };
+    render(<ContainersPanel observation={o} limit={90} />);
+    expect(screen.getByText("telemetry")).toBeInTheDocument();
+    expect(screen.getByText("fabriclet-sonic")).toBeInTheDocument();
+    // Image is truncated to basename
+    expect(screen.getByText("docker-sonic-telemetry:latest")).toBeInTheDocument();
+    // No log output visible before clicking
+    expect(screen.queryByLabelText("Container logs")).not.toBeInTheDocument();
+  });
+
+  it("shows empty state when container list is empty", () => {
+    const o = observation();
+    o.containers = {
+      state: "ready",
+      complete: true,
+      sampledAt: new Date().toISOString(),
+      data: [],
+    };
+    render(<ContainersPanel observation={o} limit={90} />);
+    expect(screen.getByText("No containers found.")).toBeInTheDocument();
+  });
+
+  it("shows unavailable when containers domain is unavailable", () => {
+    const o = observation();
+    o.containers = { state: "unavailable", complete: false, data: null };
+    render(<ContainersPanel observation={o} limit={90} />);
+    expect(screen.getByText("Container data not available.")).toBeInTheDocument();
+  });
+
+  it("Logs button only appears when switchUID is set", () => {
+    const o = observation();
+    o.switchUID = undefined;
+    o.containers = {
+      state: "ready",
+      complete: true,
+      sampledAt: new Date().toISOString(),
+      data: [
+        {
+          id: "abc",
+          name: "mycontainer",
+          image: "img:latest",
+          state: "running",
+          status: "Up",
+          createdAt: "2026-01-01",
+          runningFor: "1h ago",
+        },
+      ],
+    };
+    render(<ContainersPanel observation={o} limit={90} />);
+    expect(screen.queryByRole("button", { name: /Fetch logs/i })).not.toBeInTheDocument();
+  });
 });

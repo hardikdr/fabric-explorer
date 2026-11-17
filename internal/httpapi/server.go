@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/ironcore-dev/fabric-explorer/internal/observation"
@@ -9,9 +10,14 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
-func Handler(store *source.Store, webDir string) http.Handler {
+func Handler(store *source.Store, webDir string, observations ...*observation.Store) http.Handler {
+	var obsStore *observation.Store
+	if len(observations) > 0 {
+		obsStore = observations[0]
+	}
 	files := http.FileServer(http.Dir(webDir))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -38,9 +44,14 @@ func Handler(store *source.Store, webDir string) http.Handler {
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("Cache-Control", "no-store")
 			snapshot := observation.Snapshot{SchemaVersion: "v1", Mode: "disabled", Switches: []observation.Switch{}, Links: []observation.Link{}}
+			if obsStore != nil {
+				snapshot = obsStore.Get()
+			}
 			if r.Method != http.MethodHead {
 				_ = json.NewEncoder(w).Encode(snapshot)
 			}
+		case "/api/v1/containers/logs":
+			handleContainerLogs(w, r, obsStore)
 		case "/healthz":
 			w.WriteHeader(http.StatusOK)
 		case "/readyz":
@@ -67,3 +78,45 @@ func Handler(store *source.Store, webDir string) http.Handler {
 		}
 	})
 }
+
+func handleContainerLogs(w http.ResponseWriter, r *http.Request, obsStore *observation.Store) {
+	if obsStore == nil {
+		http.Error(w, "observations not available", http.StatusServiceUnavailable)
+		return
+	}
+	switchUID := r.URL.Query().Get("switchUID")
+	containerID := r.URL.Query().Get("containerID")
+	if switchUID == "" || containerID == "" {
+		http.Error(w, "switchUID and containerID are required", http.StatusBadRequest)
+		return
+	}
+	// Validate that the containerID was discovered for this switchUID in the current snapshot.
+	// Use the canonical ID from the snapshot — not the raw HTTP value — to avoid injection.
+	target, canonicalID, found := obsStore.ValidateContainerRequest(switchUID, containerID)
+	if !found {
+		http.Error(w, "container not found for this switch", http.StatusNotFound)
+		return
+	}
+	reader, ok := obsStore.Reader.(observation.SSHReader)
+	if !ok || reader.PasswordFile == "" {
+		http.Error(w, "live SSH not configured", http.StatusServiceUnavailable)
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+	logs, errCode := reader.DockerLogs(ctx, target, canonicalID)
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	if errCode != "" && len(logs) == 0 {
+		w.Header().Set("X-Log-Error", errCode)
+		http.Error(w, "logs unavailable: "+errCode, http.StatusServiceUnavailable)
+		return
+	}
+	if errCode != "" {
+		w.Header().Set("X-Log-Error", errCode)
+	}
+	if r.Method != http.MethodHead {
+		_, _ = w.Write(logs)
+	}
+}
+

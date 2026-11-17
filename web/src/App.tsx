@@ -14,6 +14,8 @@ import {
   GitBranch,
   AlertTriangle,
   ChevronDown,
+  Link2,
+  Activity,
 } from "lucide-react";
 import { useInventory } from "./api";
 import { key, filterSwitches, type Inventory, type Filters } from "./model";
@@ -27,11 +29,13 @@ import {
 import { Topology } from "./Topology";
 import { ThemeSelector } from "./theme";
 import {
+  domainState,
   eligibleLinks,
   useObservations,
   type Observations,
 } from "./observations";
 import { ObservationFleet } from "./ObservedPanels";
+
 export function App() {
   const { data, error, loading } = useInventory();
   const observations = useObservations();
@@ -57,12 +61,13 @@ export function App() {
     />
   );
 }
+
 function Sources({ data }: { data: Inventory }) {
   return (
     <details className="sources">
       <summary>
         <RefreshCw size={14} />
-        Resource source details
+        Kubernetes resource sources
         <ChevronDown size={14} />
       </summary>
       <div className="source-grid">
@@ -72,38 +77,21 @@ function Sources({ data }: { data: Inventory }) {
               {s.kind} <Badge value={s.state} />
             </strong>
             <p>
-              {s.count} retained objects ·{" "}
-              {s.complete ? "complete list" : "incomplete / uncertain"}
+              {s.count} objects · {s.complete ? "complete" : "incomplete"}
             </p>
-            <p>Scope: {s.scope.join(", ")}</p>
             <small>
-              Last successful list:{" "}
               {s.lastSuccessfulListAt
                 ? new Date(s.lastSuccessfulListAt).toLocaleTimeString()
-                : "never"}
-              <br />
-              Last attempt:{" "}
-              {s.lastAttemptAt
-                ? new Date(s.lastAttemptAt).toLocaleTimeString()
-                : "not yet"}
-              {s.error && (
-                <>
-                  <br />
-                  Error: {s.error}
-                </>
-              )}
+                : "never listed"}
+              {s.error && <> · {s.error}</>}
             </small>
           </div>
         ))}
       </div>
-      <p className="note">
-        Kubernetes lists are not transactional. Refresh time does not establish
-        device status freshness. Partial lists retain previous objects until a
-        complete refresh.
-      </p>
     </details>
   );
 }
+
 function Unmatched({ data }: { data: Inventory }) {
   return (
     <details className="unmatched">
@@ -116,8 +104,7 @@ function Unmatched({ data }: { data: Inventory }) {
         <ChevronDown size={14} />
       </summary>
       <p className="note">
-        These resources have no resolved Switch association. Names and
-        references are retained for inspection.
+        Resources with no resolved Switch association.
       </p>
       {data.nodes
         .filter((n) => data.unmatched.nodes.includes(key(n.resource.metadata)))
@@ -154,12 +141,13 @@ function Unmatched({ data }: { data: Inventory }) {
         ))}
       {Object.values(data.unmatched).every((v) => v.length === 0) && (
         <p className="empty-inline">
-          All listed Fabric resources have a resolved Switch association.
+          All Fabric resources have a resolved Switch association.
         </p>
       )}
     </details>
   );
 }
+
 export function Dashboard({
   data,
   error = "",
@@ -196,21 +184,135 @@ export function Dashboard({
     else url.searchParams.delete("switch");
     history.replaceState(null, "", url);
   };
-  const mapped = data.switches.filter(
-    (s) => s.association.state === "associated",
-  ).length;
   const degraded = data.sourceStates.some(
     (s) => s.state !== "ready" || !s.complete,
   );
   const chooseFilter = (field: keyof Filters, value: string) =>
     setFilters((f) => ({ ...f, [field]: value }));
+
+  const obsNow = Date.now();
+  const hasObs =
+    observations && observations.mode !== "disabled" && !observationError;
+  const verifiedObs = hasObs
+    ? observations.switches.filter(
+        (s) =>
+          s.identityState === "verified" &&
+          s.switchUID &&
+          domainState(s.ports, observations.staleAfterSeconds, obsNow) !==
+            "stale" &&
+          domainState(s.bgp, observations.staleAfterSeconds, obsNow) !== "stale",
+      )
+    : [];
+  const switchesWithFresh = verifiedObs.length;
+  const totalBGP = verifiedObs.reduce(
+    (sum, s) => sum + (s.bgp.data?.length ?? 0),
+    0,
+  );
+  const establishedBGP = verifiedObs.reduce(
+    (sum, s) =>
+      sum +
+      (s.bgp.data?.filter((b) => b.state.toLowerCase() === "established")
+        .length ?? 0),
+    0,
+  );
+  const physicalLinks = eligibleLinks(observations, obsNow).length;
+  const portsUp = verifiedObs.reduce(
+    (sum, s) =>
+      sum + (s.ports.data?.filter((p) => p.oper?.toLowerCase() === "up").length ?? 0),
+    0,
+  );
+  const portsDown = verifiedObs.reduce(
+    (sum, s) =>
+      sum +
+      (s.ports.data?.filter(
+        (p) =>
+          p.oper?.toLowerCase() === "down" && p.admin?.toLowerCase() === "up",
+      ).length ?? 0),
+    0,
+  );
+
+  const summaryCards = hasObs
+    ? [
+        {
+          label: "Switches",
+          value: data.switches.length,
+          sub:
+            switchesWithFresh < data.switches.length
+              ? switchesWithFresh + " with fresh observations"
+              : "All with fresh observations",
+          icon: Network,
+          accent: false,
+        },
+        {
+          label: "BGP sessions",
+          value: establishedBGP + "/" + totalBGP,
+          sub:
+            establishedBGP === totalBGP && totalBGP > 0
+              ? "All established"
+              : totalBGP - establishedBGP + " not established",
+          icon: Activity,
+          accent: establishedBGP === totalBGP && totalBGP > 0,
+        },
+        {
+          label: "Physical links",
+          value: physicalLinks,
+          sub: "Reciprocal LLDP evidence",
+          icon: Link2,
+          accent: false,
+        },
+        {
+          label: "Ports up",
+          value: portsUp,
+          sub:
+            portsDown > 0
+              ? portsDown + " unexpectedly down"
+              : "None unexpectedly down",
+          icon: Radio,
+          accent: portsDown === 0 && portsUp > 0,
+        },
+      ]
+    : [
+        {
+          label: "Declared switches",
+          value: data.switches.length,
+          sub: "SONiC Switch resources",
+          icon: Network,
+          accent: false,
+        },
+        {
+          label: "Associated Nodes",
+          value: data.switches.filter((s) => s.association.state === "associated")
+            .length,
+          sub:
+            data.switches.filter((s) => s.association.state !== "associated")
+              .length + " unresolved",
+          icon: Boxes,
+          accent: false,
+        },
+        {
+          label: "Bound Cells",
+          value: data.cells.filter((c) => c.binding === "bound").length,
+          sub:
+            data.cells.filter((c) => c.binding !== "bound").length +
+            " other / orphan",
+          icon: GitBranch,
+          accent: false,
+        },
+        {
+          label: "Diagnostics",
+          value: data.diagnostics.length,
+          sub: "Reference configuration",
+          icon: AlertTriangle,
+          accent: false,
+        },
+      ];
+
   return (
     <div className="app">
       <nav className="sidebar" aria-label="Main navigation">
         <div className="brand-symbol">
-          <Network size={26} />
+          <img src="/favicon.svg" alt="IronCore" width={44} height={44} />
         </div>
-        <span className="brand-name">IRONCORE</span>
         <div className="nav-item selected" title="Fabric Explorer">
           <LayoutDashboard size={21} />
           <span>Explorer</span>
@@ -231,9 +333,7 @@ export function Dashboard({
             <ThemeSelector />
             <span className={"mode " + data.mode}>
               <span />
-              {data.mode === "fixture"
-                ? "FIXTURE DATA"
-                : "KUBERNETES INVENTORY"}
+              {data.mode === "fixture" ? "FIXTURE DATA" : "LIVE"}
             </span>
             <span className="readonly">
               <LockKeyhole size={13} />
@@ -246,10 +346,6 @@ export function Dashboard({
             <div>
               <div className="eyebrow">NETWORK INFRASTRUCTURE</div>
               <h1>Fabric Explorer</h1>
-              <p>
-                Understand your switches, configuration, and resource
-                relationships.
-              </p>
             </div>
             <div className="sync">
               <span
@@ -260,11 +356,11 @@ export function Dashboard({
                   {error
                     ? "UI refresh failed"
                     : degraded
-                      ? "Resource sources degraded"
-                      : "Kubernetes resources refreshed"}
+                      ? "Sources degraded"
+                      : "Resources current"}
                 </strong>
                 <small>
-                  {data.mode === "fixture" ? "Fixture replay · " : ""}
+                  {data.mode === "fixture" ? "Fixture · " : ""}
                   {new Date(data.generatedAt).toLocaleTimeString()} · every{" "}
                   {data.pollSeconds}s
                 </small>
@@ -274,54 +370,25 @@ export function Dashboard({
           <div className="context">
             <Boxes size={13} />
             <span>{data.context}</span>
-            <span className="separator">·</span>
-            <span>
-              Kubernetes configuration and API state. Device observations are
-              not provided by this build.
-            </span>
           </div>
           {(degraded || error) && (
             <div className="warning-banner" role="status">
               <AlertTriangle size={19} />
               <div>
-                <strong>{error || "Inventory is incomplete or stale"}</strong>
+                <strong>{error || "Inventory incomplete or stale"}</strong>
                 <p>
-                  Retained resources may be outdated. Missing references cannot
-                  be confirmed while their source is unavailable.
+                  Missing references cannot be confirmed while their source is
+                  unavailable.
                 </p>
               </div>
             </div>
           )}
           <section className="summary" aria-label="Fleet summary">
-            {[
-              {
-                label: "Declared switches",
-                value: data.switches.length,
-                sub: "SONiC Switch resources",
-                icon: Network,
-              },
-              {
-                label: "Associated Nodes",
-                value: mapped,
-                sub: data.switches.length - mapped + " switches unresolved",
-                icon: Boxes,
-              },
-              {
-                label: "Bound Cells",
-                value: data.cells.filter((c) => c.binding === "bound").length,
-                sub:
-                  data.cells.filter((c) => c.binding !== "bound").length +
-                  " other targeted / orphan Cells",
-                icon: GitBranch,
-              },
-              {
-                label: "Reference diagnostics",
-                value: data.diagnostics.length,
-                sub: "Configuration evidence, not health",
-                icon: AlertTriangle,
-              },
-            ].map(({ label, value, sub, icon: Icon }) => (
-              <div className="stat-card" key={label}>
+            {summaryCards.map(({ label, value, sub, icon: Icon, accent }) => (
+              <div
+                className={"stat-card" + (accent ? " stat-healthy" : "")}
+                key={label}
+              >
                 <div>
                   <span>{label}</span>
                   <Icon size={18} />
@@ -373,7 +440,7 @@ export function Dashboard({
                 <div className="view-toggle" aria-label="View">
                   <button
                     className={view !== "table" ? "active" : ""}
-                    aria-label="Show logical topology and inventory"
+                    aria-label="Show topology and inventory"
                     onClick={() => setView("both")}
                   >
                     <GitBranch size={17} />
@@ -454,21 +521,20 @@ export function Dashboard({
                 <section className="topology-card">
                   <div className="card-heading">
                     <div>
-                      <h2>Logical configuration view</h2>
+                      <h2>
+                        {physical ? "Observed LLDP topology" : "Logical topology"}
+                      </h2>
                       <p>
                         {physical
-                          ? "LLDP-backed observations · missing/stale evidence suppresses edges"
-                          : "Logical configuration grouping · no cabling inferred"}
+                          ? "LLDP-backed physical links · stale evidence suppresses edges"
+                          : "Roles from bound Cells · no cabling inferred"}
                       </p>
                       <button
                         className="topology-mode"
                         aria-pressed={physical}
                         onClick={() => setPhysical((v) => !v)}
                       >
-                        {physical
-                          ? "Show logical view"
-                          : "Show observed LLDP links"}{" "}
-                        (
+                        {physical ? "Show logical view" : "Show LLDP links"} (
                         {observationError
                           ? 0
                           : eligibleLinks(observations).length}
@@ -505,8 +571,7 @@ export function Dashboard({
                       <span className="count">{switches.length}</span>
                     </h2>
                     <p>
-                      {switches.length} of {data.switches.length} declared
-                      switches
+                      {switches.length} of {data.switches.length} switches
                     </p>
                   </div>
                   <span className="table-hint">
@@ -518,10 +583,10 @@ export function Dashboard({
                   <table>
                     <thead>
                       <tr>
-                        <th>Switch / management</th>
+                        <th>Switch</th>
                         <th>Role</th>
-                        <th>Provisioning declaration</th>
-                        <th>Fabric association / Cell</th>
+                        <th>State</th>
+                        <th>Node / Cell</th>
                         <th />
                       </tr>
                     </thead>
@@ -534,6 +599,17 @@ export function Dashboard({
                         const c = data.cells.find(
                           (c) => key(c.resource.metadata) === n?.boundCellKey,
                         );
+                        const obs = observations?.switches.find(
+                          (o) =>
+                            o.target.resourceName === s.resource.metadata.name,
+                        );
+                        const obsState = obs
+                          ? domainState(
+                              obs.bgp,
+                              observations!.staleAfterSeconds,
+                              obsNow,
+                            )
+                          : undefined;
                         return (
                           <tr
                             key={key(s.resource.metadata)}
@@ -565,7 +641,19 @@ export function Dashboard({
                               <Badge value={s.role} />
                             </td>
                             <td>
-                              <Badge value={s.resource.status.state} />
+                              {obs ? (
+                                <Badge
+                                  value={
+                                    obs.identityState === "verified"
+                                      ? obsState === "stale"
+                                        ? "stale"
+                                        : "observed"
+                                      : obs.identityState
+                                  }
+                                />
+                              ) : (
+                                <Badge value={s.resource.status.state} />
+                              )}
                             </td>
                             <td>
                               <div className="association-cell">
@@ -579,7 +667,7 @@ export function Dashboard({
                                       "/" +
                                       c.resource.metadata.name
                                     : n
-                                      ? "Cell binding: " + n.binding
+                                      ? n.binding
                                       : "No resolved Node"}
                                 </small>
                               </div>
@@ -609,15 +697,15 @@ export function Dashboard({
                       <p>
                         {data.switches.length
                           ? "Adjust the search or filters."
-                          : "Check source status and scope. A complete empty list is distinct from a failed read."}
+                          : "Check source status and scope."}
                       </p>
                     </div>
                   )}
                 </div>
                 <div className="table-footer">
                   <Radio size={13} />
-                  Ready is provisioning acceptance. API status is not a live
-                  device health signal.
+                  State: observed = SSH sample current · stale = sample expired ·
+                  Ready = provisioning declaration only
                 </div>
               </section>
               <Unmatched data={data} />
@@ -625,7 +713,7 @@ export function Dashboard({
                 <details className="fleet-diagnostics">
                   <summary>
                     <AlertTriangle size={16} />
-                    All reference diagnostics{" "}
+                    Reference diagnostics{" "}
                     <span className="count">{data.diagnostics.length}</span>
                   </summary>
                   <Diagnostics items={data.diagnostics} />
@@ -654,9 +742,7 @@ export function Dashboard({
           )}
           <footer>
             IronCore Fabric Explorer{" "}
-            <span>
-              Read-only · Existing Kubernetes APIs · No device control
-            </span>
+            <span>Read-only · Existing Kubernetes APIs · No device control</span>
           </footer>
         </main>
       </div>

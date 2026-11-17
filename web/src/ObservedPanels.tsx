@@ -4,9 +4,12 @@ import {
   domainState,
   type Domain,
   type ObservedSwitch,
+  type ObservedContainer,
   type Observations,
 } from "./observations";
-const unknown = "Not reported";
+import { useState } from "react";
+const unknown = "—";
+
 export function ObservationFleet({
   data,
   error,
@@ -17,19 +20,17 @@ export function ObservationFleet({
   if (!data || data.mode === "disabled")
     return (
       <div className="note observation-status">
-        SONiC observation collection {error ? "unavailable" : "disabled"}.
-        Kubernetes resource refresh is independent.
+        SONiC observations {error ? "unavailable" : "disabled"}.
       </div>
     );
   return (
-    <section className="observation-fleet" aria-label="SONiC collection status">
+    <section className="observation-fleet" aria-label="SONiC observation status">
       <div className="observation-heading">
-        <strong>SONiC operational observations</strong>
-        <Badge
-          value={data.mode === "replay" ? "CAPTURE REPLAY" : "OBSERVATIONS"}
-        />
+        <strong>SONiC observations</strong>
+        <Badge value={data.mode === "replay" ? "REPLAY" : "LIVE"} />
         <span>
-          {error || "Separate device samples · no configuration changes"}
+          {new Date(data.generatedAt).toLocaleTimeString()} · every{" "}
+          {data.pollSeconds}s
         </span>
       </div>
       <div className="observation-targets">
@@ -55,6 +56,7 @@ export function ObservationFleet({
     </section>
   );
 }
+
 export function DomainNotice<T>({
   domain,
   limit = 90,
@@ -68,19 +70,14 @@ export function DomainNotice<T>({
       <Badge value={state} />
       <span>
         {domain.sampledAt
-          ? "CLI sample: " + new Date(domain.sampledAt).toLocaleString()
-          : "No successful device sample"}
+          ? new Date(domain.sampledAt).toLocaleTimeString()
+          : "No sample"}
       </span>
-      <small>
-        {domain.error && "Collection error: " + domain.error + " · "}
-        {domain.command || "Command not attempted"} ·{" "}
-        {domain.complete
-          ? "Complete command result"
-          : "Incomplete / unavailable"}
-      </small>
+      {domain.error && <small className="sample-error">{domain.error}</small>}
     </div>
   );
 }
+
 export function IdentityNotice({
   observation,
   mode,
@@ -88,19 +85,27 @@ export function IdentityNotice({
   observation?: ObservedSwitch;
   mode?: string;
 }) {
+  if (!observation) {
+    return (
+      <div className="identity-notice identity-notice--absent">
+        No SSH observations for this switch.
+        {mode === "replay" ? " (capture replay)" : ""}
+      </div>
+    );
+  }
   return (
-    <div className="note">
-      <strong>
-        SONiC {mode === "replay" ? "capture replay" : "observations"}
-      </strong>
-      <p>
-        {observation?.identityEvidence ||
-          "No independently verified SONiC observations for this Switch. Kubernetes Ready/Cell Active are not telemetry."}
-      </p>
-      {observation && <Badge value={observation.identityState} />}
+    <div
+      className={
+        "identity-notice identity-notice--" +
+        (observation.identityState === "verified" ? "ok" : "warn")
+      }
+    >
+      <Badge value={observation.identityState} />
+      <span>{observation.identityEvidence}</span>
     </div>
   );
 }
+
 export function ObservedPorts({
   observation,
   data,
@@ -118,66 +123,99 @@ export function ObservedPorts({
   const interfaces = data.interfaces.filter((i) =>
     node?.interfaceKeys.includes(key(i.metadata)),
   );
+
+  const allPorts = observation.ports.data || [];
+  const fabricHandles = new Set(interfaces.map((i) => i.spec.handle));
+  const fabricPorts = allPorts.filter((p) =>
+    fabricHandles.has("sonic://" + p.name),
+  );
+  const otherPorts = allPorts.filter(
+    (p) => !fabricHandles.has("sonic://" + p.name),
+  );
+
+  const PortRow = ({
+    port,
+    showFabric,
+  }: {
+    port: (typeof allPorts)[number];
+    showFabric: boolean;
+  }) => {
+    const registered = interfaces.filter(
+      (i) => i.spec.handle === "sonic://" + port.name,
+    );
+    const iface = registered.length === 1 ? registered[0] : undefined;
+    const isDown =
+      port.oper?.toLowerCase() === "down" && port.admin?.toLowerCase() === "up";
+    return (
+      <div
+        className={
+          "observed-port" + (isDown ? " observed-port--down" : "")
+        }
+        key={port.name}
+      >
+        <div className="port-heading">
+          <strong>{port.name}</strong>
+          {port.alias && (
+            <span className="port-alias">{port.alias}</span>
+          )}
+          <Badge value={port.oper} />
+        </div>
+        <div className="port-meta">
+          <span>{port.speed || unknown}</span>
+          <span>MTU {port.mtu ?? unknown}</span>
+          {showFabric && iface && (
+            <span className="port-fabric-ref">{iface.metadata.name}</span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <>
-      <h3>SONiC-observed interfaces</h3>
       <DomainNotice domain={observation.ports} limit={limit} />
-      {(observation.ports.data || []).map((port) => {
-        const registered = interfaces.filter(
-          (i) => i.spec.handle === "sonic://" + port.name,
-        );
-        const i = registered.length === 1 ? registered[0] : undefined;
-        return (
-          <div className="observed-port" key={port.name}>
-            <div className="port-heading">
-              <strong>{port.name}</strong>
-              <Badge value={port.oper} />
-            </div>
-            <div className="state-columns">
-              <div>
-                <small>Kubernetes desired admin</small>
-                <strong>{i?.spec.adminState || "Unknown"}</strong>
-              </div>
-              <div>
-                <small>Kubernetes API operation</small>
-                <strong>{i?.status.operationState || "Unknown"}</strong>
-              </div>
-              <div>
-                <small>SONiC admin / operation</small>
-                <strong>
-                  {port.admin} / {port.oper}
-                </strong>
-              </div>
-            </div>
-            <p>
-              {port.speed || unknown} · MTU {port.mtu ?? unknown} · FEC{" "}
-              {port.fec || unknown}
-            </p>
-            <small>
-              Fabric Interface:{" "}
-              {i?.metadata.name ||
-                (registered.length > 1
-                  ? "Ambiguous provider handle"
-                  : "No unique local provider-handle match")}
-            </small>
-          </div>
-        );
-      })}
-      {observation.ports.data?.length === 0 && observation.ports.complete && (
-        <p className="empty-inline">Command returned no interfaces.</p>
+      {fabricPorts.length > 0 && (
+        <>
+          <h3 className="ports-section-title">
+            Fabric ports{" "}
+            <span className="count">{fabricPorts.length}</span>
+          </h3>
+          {fabricPorts.map((port) => (
+            <PortRow port={port} showFabric key={port.name} />
+          ))}
+        </>
       )}
-      <h3>SONiC IP interfaces</h3>
-      <DomainNotice domain={observation.addresses} limit={limit} />
-      {(observation.addresses.data || []).map((a, i) => (
-        <div className="prefix" key={i}>
-          <strong>{a.name || "Interface unknown"}</strong>
-          <code>{a.address}</code>
-          <small>{a.family}</small>
-        </div>
-      ))}
+      {otherPorts.length > 0 && (
+        <details className="ports-other">
+          <summary>
+            All other ports{" "}
+            <span className="count">{otherPorts.length}</span>
+          </summary>
+          {otherPorts.map((port) => (
+            <PortRow port={port} showFabric={false} key={port.name} />
+          ))}
+        </details>
+      )}
+      {allPorts.length === 0 && observation.ports.complete && (
+        <p className="empty-inline">No interfaces returned.</p>
+      )}
+      {(observation.addresses.data || []).length > 0 && (
+        <>
+          <h3 className="ports-section-title">IP interfaces</h3>
+          <DomainNotice domain={observation.addresses} limit={limit} />
+          {observation.addresses.data!.map((a, i) => (
+            <div className="prefix" key={i}>
+              <strong>{a.name || "—"}</strong>
+              <code>{a.address}</code>
+              <small>{a.family}</small>
+            </div>
+          ))}
+        </>
+      )}
     </>
   );
 }
+
 export function BGPPanel({
   observation,
   limit,
@@ -187,24 +225,12 @@ export function BGPPanel({
 }) {
   return (
     <>
-      <h3>Observed BGP sessions</h3>
       <DomainNotice domain={observation.bgp} limit={limit} />
-      {observation.bgpDetails && (
-        <>
-          <h4>Neighbor-detail enrichment</h4>
-          <DomainNotice domain={observation.bgpDetails} limit={limit} />
-        </>
-      )}
-      <p className="note">
-        FRR-reported sessions, including interface-named IPv6 unnumbered
-        neighbors. Cell Active does not prove convergence. Missing counters or
-        local interface identities remain unreported.
-      </p>
       <div className="telemetry-table">
         <table>
           <thead>
             <tr>
-              <th>Neighbor / VRF / family</th>
+              <th>Neighbor</th>
               <th>State / uptime</th>
               <th>ASN / prefixes</th>
             </tr>
@@ -232,9 +258,10 @@ export function BGPPanel({
                   <td>
                     <strong>{b.neighbor}</strong>
                     <small>
-                      {b.vrf} · {b.addressFamily}
+                      {b.vrf !== "default" ? b.vrf + " · " : ""}
+                      {b.addressFamily}
+                      {b.localInterface ? " · " + b.localInterface : ""}
                     </small>
-                    <small>Local: {b.localInterface || unknown}</small>
                   </td>
                   <td>
                     <Badge value={b.state} />
@@ -243,8 +270,8 @@ export function BGPPanel({
                   <td>
                     AS {b.remoteASN ?? unknown}
                     <small>
-                      Received {b.receivedPrefixes ?? unknown} · advertised{" "}
-                      {b.advertisedPrefixes ?? unknown}
+                      ↓{b.receivedPrefixes ?? "?"} ↑
+                      {b.advertisedPrefixes ?? "?"}
                     </small>
                   </td>
                 </tr>
@@ -254,13 +281,12 @@ export function BGPPanel({
         </table>
       </div>
       {observation.bgp.complete && observation.bgp.data?.length === 0 && (
-        <p className="empty-inline">
-          No sessions returned by this command. This is not a health verdict.
-        </p>
+        <p className="empty-inline">No sessions returned.</p>
       )}
     </>
   );
 }
+
 export function LLDPPanel({
   observation,
   limit,
@@ -270,40 +296,36 @@ export function LLDPPanel({
 }) {
   return (
     <>
-      <h3>Observed LLDP neighbors</h3>
       <DomainNotice domain={observation.lldp} limit={limit} />
-      <p className="note">
-        Edges require verified device MACs and native ports. Reciprocal evidence
-        is preferred; one-sided evidence is dashed. Reported daemon age is not a
-        reliable last-received timestamp.
-      </p>
       {observation.lldp.command === "lldp-table" && (
         <p className="note">
-          Table output omits chassis/port subtypes. These neighbors cannot
-          establish physical graph edges.
+          Table output omits chassis/port subtypes. Edges require detail output.
         </p>
       )}
       {(observation.lldp.data || []).map((n, i) => (
         <div className="observed-port" key={i}>
-          <h3>
-            {n.localPort} → {n.systemName || "System name unknown"}
-          </h3>
-          <p>
-            Chassis: {n.chassisID || unknown} (
-            {n.chassisSubtype || "Subtype unknown"})
-          </p>
-          <p>
-            Remote port: {n.portID} ({n.portSubtype || "Subtype unknown"})
-          </p>
-          <small>
-            Reported age: {n.reportedAge || unknown} · advertised TTL:{" "}
-            {n.advertisedTTLSeconds ?? unknown}s
-          </small>
+          <div className="port-heading">
+            <strong>{n.localPort}</strong>
+            <span className="port-arrow">→</span>
+            <strong>{n.systemName || "?"}</strong>
+          </div>
+          <div className="port-meta">
+            <span>{n.portID}</span>
+            {n.chassisID && <span>{n.chassisID}</span>}
+            {n.advertisedTTLSeconds != null && (
+              <span>TTL {n.advertisedTTLSeconds}s</span>
+            )}
+          </div>
         </div>
       ))}
+      {(observation.lldp.data?.length ?? 0) === 0 &&
+        observation.lldp.complete && (
+          <p className="empty-inline">No LLDP neighbors observed.</p>
+        )}
     </>
   );
 }
+
 export function VLANPanel({
   observation,
   limit,
@@ -313,12 +335,7 @@ export function VLANPanel({
 }) {
   return (
     <>
-      <h3>SONiC-reported VLAN configuration</h3>
       <DomainNotice domain={observation.vlans} limit={limit} />
-      <p className="note">
-        show vlan brief reports configured membership and tagging. Operational
-        forwarding state was not measured.
-      </p>
       <div className="telemetry-table">
         <table>
           <thead>
@@ -340,7 +357,160 @@ export function VLANPanel({
         </table>
       </div>
       {observation.vlans.complete && observation.vlans.data?.length === 0 && (
-        <p className="empty-inline">No VLAN entries returned by the command.</p>
+        <p className="empty-inline">No VLAN entries returned.</p>
+      )}
+    </>
+  );
+}
+
+function ContainerRow({
+  container,
+  switchUID,
+  onShowLogs,
+}: {
+  container: ObservedContainer;
+  switchUID?: string;
+  onShowLogs: (c: ObservedContainer) => void;
+}) {
+  const isRunning = container.state?.toLowerCase() === "running";
+  return (
+    <tr className={"container-row" + (isRunning ? "" : " container-row--stopped")}>
+      <td className="container-name">{container.name}</td>
+      <td>
+        <Badge value={container.state} />
+      </td>
+      <td className="container-image" title={container.image}>
+        {container.image.replace(/^.*\//, "")}
+      </td>
+      <td className="container-uptime">{container.runningFor || "—"}</td>
+      <td>
+        {switchUID && (
+          <button
+            className="inline-action container-logs-btn"
+            onClick={() => onShowLogs(container)}
+            aria-label={"Fetch logs for " + container.name}
+          >
+            Logs
+          </button>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+export function ContainersPanel({
+  observation,
+  limit,
+}: {
+  observation: ObservedSwitch;
+  limit: number;
+}) {
+  const [selectedContainer, setSelectedContainer] =
+    useState<ObservedContainer | null>(null);
+  const [logs, setLogs] = useState<string>("");
+  const [logError, setLogError] = useState<string>("");
+  const [logLoading, setLogLoading] = useState(false);
+
+  const state = domainState(observation.containers, limit);
+  const containers = observation.containers?.data ?? [];
+  const switchUID = observation.switchUID;
+
+  async function fetchLogs(container: ObservedContainer) {
+    if (!switchUID) return;
+    setSelectedContainer(container);
+    setLogs("");
+    setLogError("");
+    setLogLoading(true);
+    try {
+      const url =
+        "/api/v1/containers/logs?switchUID=" +
+        encodeURIComponent(switchUID) +
+        "&containerID=" +
+        encodeURIComponent(container.id);
+      const res = await fetch(url, { signal: AbortSignal.timeout(35000) });
+      const text = await res.text();
+      if (!res.ok) {
+        setLogError(res.headers.get("X-Log-Error") || "fetch-failed");
+      } else {
+        setLogs(text);
+        if (res.headers.get("X-Log-Error")) {
+          setLogError(res.headers.get("X-Log-Error")!);
+        }
+      }
+    } catch {
+      setLogError("request-failed");
+    } finally {
+      setLogLoading(false);
+    }
+  }
+
+  return (
+    <>
+      <div className="domain-notice-row">
+        <DomainNotice domain={observation.containers} limit={limit} />
+      </div>
+      {state === "unavailable" && (
+        <p className="empty-inline">Container data not available.</p>
+      )}
+      {containers.length > 0 && (
+        <div className="table-scroll">
+          <table className="data-table containers-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>State</th>
+                <th>Image</th>
+                <th>Uptime</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {containers.map((c) => (
+                <ContainerRow
+                  key={c.id}
+                  container={c}
+                  switchUID={switchUID}
+                  onShowLogs={fetchLogs}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {containers.length === 0 && state === "ready" && (
+        <p className="empty-inline">No containers found.</p>
+      )}
+      {selectedContainer && (
+        <div className="log-viewer">
+          <div className="log-viewer-header">
+            <strong>{selectedContainer.name}</strong>
+            <span className="log-viewer-meta">
+              {logLoading ? "Loading…" : "Last 30 lines"}
+            </span>
+            <button
+              className="icon-button"
+              onClick={() => {
+                setSelectedContainer(null);
+                setLogs("");
+                setLogError("");
+              }}
+              aria-label="Close log viewer"
+            >
+              ✕
+            </button>
+          </div>
+          {logError && (
+            <div className="log-error">
+              Log fetch: <code>{logError}</code>
+            </div>
+          )}
+          {logs && (
+            <pre className="log-output" aria-label="Container logs">
+              {logs}
+            </pre>
+          )}
+          {logLoading && <div className="log-loading">Fetching…</div>}
+        </div>
       )}
     </>
   );

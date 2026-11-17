@@ -45,9 +45,9 @@ it("selects from table and topology; inspects configuration; preserves selection
   expect(
     inspector.getByRole("heading", { name: "leaf-1.clos.example" }),
   ).toBeInTheDocument();
-  expect(inspector.getByText("sonic://leaf-1")).toBeInTheDocument();
+  // Management host is shown in overview fields
   expect(
-    inspector.getByText(/Bootstrap completion and device reachability/),
+    inspector.getByText("192.0.2.21:22"),
   ).toBeInTheDocument();
   fireEvent.click(inspector.getByRole("tab", { name: "Cell config" }));
   expect(inspector.getAllByText("10.1.0.0/16").length).toBeGreaterThan(0);
@@ -65,7 +65,7 @@ it("selects from table and topology; inspects configuration; preserves selection
   expect(
     inspector.getByRole("heading", { name: "spine-2.clos.example" }),
   ).toBeInTheDocument();
-  fireEvent.click(inspector.getByRole("tab", { name: "evidence" }));
+  fireEvent.click(inspector.getByRole("tab", { name: "Technical" }));
   expect(inspector.getByText("declared-bootstrap")).toBeInTheDocument();
   expect(inspector.getByText("naming-convention")).toBeInTheDocument();
 });
@@ -97,7 +97,7 @@ it("shows stale, unknown, and empty status honestly", () => {
   stale.switches[0].role = "unknown";
   render(<Dashboard data={stale} />);
   expect(screen.getByRole("status")).toHaveTextContent(
-    "Inventory is incomplete or stale",
+    "Inventory incomplete or stale",
   );
   fireEvent.click(
     screen.getByRole("button", {
@@ -109,7 +109,7 @@ it("shows stale, unknown, and empty status honestly", () => {
       .length,
   ).toBeGreaterThan(0);
   expect(
-    screen.getAllByText("No conditions reported by this resource.").length,
+    screen.getAllByText("No conditions reported.").length,
   ).toBeGreaterThan(0);
 });
 it("keeps unresolved peers and ordered prefixes visible", () => {

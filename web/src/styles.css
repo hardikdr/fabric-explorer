@@ -793,7 +793,7 @@ tbody tr:hover {
   border-radius: 9px;
   position: sticky;
   top: 16px;
-  overflow: hidden;
+  overflow: clip;
   box-shadow: 0 4px 15px var(--shadow);
 }
 .inspector-title {
@@ -1393,7 +1393,7 @@ footer span {
   background: var(--accent-bg);
 }
 .flow {
-  height: 390px;
+  height: 480px;
 }
 .graph-caption {
   background: var(--surface-subtle);
@@ -1715,3 +1715,246 @@ td,
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Operational stat cards */
+.stat-card.stat-healthy {
+  border-top: 3px solid var(--teal);
+}
+.stat-card.stat-healthy > strong {
+  color: var(--teal);
+}
+
+/* Inspector tabs — 7 tabs in two rows on narrow panel */
+.inspector-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  grid-template-columns: none;
+  padding: 0;
+}
+.inspector-tabs button {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 11px;
+  white-space: nowrap;
+  padding: 12px 8px;
+}
+
+/* Identity notice (replaces verbose IdentityNotice) */
+.identity-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  margin: 10px 0;
+}
+.identity-notice--ok {
+  background: var(--teal-bg);
+  color: var(--teal);
+}
+.identity-notice--warn {
+  background: var(--warning-bg);
+  color: var(--warning-text);
+}
+.identity-notice--absent {
+  background: var(--surface-subtle);
+  color: var(--muted);
+}
+
+/* Ports section */
+.ports-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  margin: 16px 0 8px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.ports-other {
+  margin: 10px 0;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 10px;
+}
+.ports-other summary {
+  font-size: 11px;
+  color: var(--muted);
+}
+.port-alias {
+  font-size: 10px;
+  color: var(--muted);
+}
+.port-arrow {
+  color: var(--muted);
+  font-size: 12px;
+}
+.port-meta {
+  display: flex;
+  gap: 10px;
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.port-fabric-ref {
+  color: var(--accent-text);
+}
+.observed-port--down {
+  border-left: 3px solid var(--warning-text);
+}
+.sample-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--muted);
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin: 8px 0 12px;
+}
+.sample-error {
+  color: var(--warning-text);
+  width: 100%;
+}
+
+/* Sync dot — green when healthy */
+.sync-dot {
+  background: var(--teal);
+}
+.sync-dot.degraded {
+  background: var(--warning-text);
+}
+
+/* BGP table — tighter prefix display */
+.telemetry-table td small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+}
+
+/* Observation fleet — more compact */
+.observation-fleet {
+  padding: 10px 14px;
+  margin: 8px 0 14px;
+}
+.observation-heading > span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* Badge: observed = same as verified (teal) */
+.badge.observed {
+  background: var(--teal-bg);
+  color: var(--teal);
+}
+
+/* Topology card title cleanup */
+.card-heading h2 {
+  font-size: 13px;
+}
+
+/* Page heading — remove subtitle gap */
+.page-heading {
+  margin-bottom: 4px;
+}
+
+/* Context line — cleaner */
+.context {
+  margin-top: 10px;
+  margin-bottom: 0;
+}
+
+/* Larger topology on wide screens */
+@media (min-width: 1600px) {
+  .flow {
+    height: 520px;
+  }
+}
+
+/* Containers tab */
+.containers-table {
+  font-size: 12px;
+}
+.container-name {
+  font-weight: 600;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.container-image {
+  color: var(--muted);
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.container-uptime {
+  color: var(--muted);
+  white-space: nowrap;
+}
+.container-row--stopped {
+  opacity: 0.65;
+}
+.container-logs-btn {
+  font-size: 11px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+.domain-notice-row {
+  margin-bottom: 8px;
+}
+
+/* Log viewer */
+.log-viewer {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.log-viewer-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--surface-subtle);
+  border-bottom: 1px solid var(--border);
+}
+.log-viewer-header strong {
+  flex: 1;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.log-viewer-meta {
+  font-size: 11px;
+  color: var(--muted);
+}
+.log-output {
+  margin: 0;
+  padding: 8px 10px;
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-x: auto;
+  max-height: 320px;
+  overflow-y: auto;
+  white-space: pre;
+  background: var(--surface);
+  color: var(--text);
+}
+.log-error {
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--warning-text);
+  background: var(--warning-bg);
+}
+.log-loading {
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+

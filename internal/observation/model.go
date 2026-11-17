@@ -10,6 +10,13 @@ type Target struct {
 	ExpectedHostname string `json:"expectedHostname,omitempty"`
 }
 
+var LabTargets = []Target{
+	{"ztp-test-switch-1", "2a10:afc0:e01f:ffff:ffff:903c:b333:72fb", "90:3c:b3:33:72:fb", "leaf-switch-1"},
+	{"ztp-test-switch-2", "2a10:afc0:e01f:ffff:ffff:903c:b333:83fb", "90:3c:b3:33:83:fb", "leaf-switch-2"},
+	{"ztp-test-switch-3", "2a10:afc0:e01f:ffff:ffff:903c:b333:75fb", "90:3c:b3:33:75:fb", "spine-switch-1"},
+	{"ztp-test-switch-4", "2a10:afc0:e01f:ffff:ffff:903c:b333:7bfb", "90:3c:b3:33:7b:fb", "spine-switch-2"},
+}
+
 type Device struct {
 	MAC      string `json:"mac"`
 	Hostname string `json:"hostname,omitempty"`
@@ -57,6 +64,18 @@ type VLAN struct {
 	Tagging string `json:"tagging,omitempty"`
 	// CLI VLAN membership is configuration, not measured forwarding state.
 }
+type Container struct {
+	ID           string  `json:"id"`
+	Name         string  `json:"name"`
+	Image        string  `json:"image"`
+	State        string  `json:"state"`
+	Status       string  `json:"status"`
+	CreatedAt    string  `json:"createdAt"`
+	RunningFor   string  `json:"runningFor"`
+	RestartCount *uint64 `json:"restartCount,omitempty"`
+	ExitCode     *int64  `json:"exitCode,omitempty"`
+	OOMKilled    bool    `json:"oomKilled,omitempty"`
+}
 type Domain[T any] struct {
 	State         string     `json:"state"`
 	Complete      bool       `json:"complete"`
@@ -67,17 +86,18 @@ type Domain[T any] struct {
 	Data          T          `json:"data"`
 }
 type Switch struct {
-	Target           Target                `json:"target"`
-	SwitchUID        string                `json:"switchUID,omitempty"`
-	IdentityState    string                `json:"identityState"`
-	IdentityEvidence string                `json:"identityEvidence"`
-	Device           Domain[Device]        `json:"device"`
-	Ports            Domain[[]Port]        `json:"ports"`
-	Addresses        Domain[[]IPInterface] `json:"addresses"`
-	BGP              Domain[[]BGP]         `json:"bgp"`
-	BGPDetails       Domain[[]BGP]         `json:"bgpDetails"`
-	LLDP             Domain[[]Neighbor]    `json:"lldp"`
-	VLANs            Domain[[]VLAN]        `json:"vlans"`
+	Target           Target                   `json:"target"`
+	SwitchUID        string                   `json:"switchUID,omitempty"`
+	IdentityState    string                   `json:"identityState"`
+	IdentityEvidence string                   `json:"identityEvidence"`
+	Device           Domain[Device]           `json:"device"`
+	Ports            Domain[[]Port]           `json:"ports"`
+	Addresses        Domain[[]IPInterface]    `json:"addresses"`
+	BGP              Domain[[]BGP]            `json:"bgp"`
+	BGPDetails       Domain[[]BGP]            `json:"bgpDetails"`
+	LLDP             Domain[[]Neighbor]       `json:"lldp"`
+	VLANs            Domain[[]VLAN]           `json:"vlans"`
+	Containers       Domain[[]Container]      `json:"containers"`
 }
 type Link struct {
 	Source     string    `json:"source"`

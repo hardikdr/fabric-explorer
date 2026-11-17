@@ -4,6 +4,7 @@ import {
   BGPPanel,
   LLDPPanel,
   VLANPanel,
+  ContainersPanel,
 } from "./ObservedPanels";
 import type { ObservedSwitch } from "./observations";
 import { useEffect, useState } from "react";
@@ -25,6 +26,7 @@ import {
   type Resource,
   type InterfaceSpec,
 } from "./model";
+
 export function Badge({ value }: { value?: string }) {
   return (
     <span className={"badge " + (value || "unknown").toLowerCase()}>
@@ -32,18 +34,20 @@ export function Badge({ value }: { value?: string }) {
     </span>
   );
 }
+
 function Fields({ items }: { items: [string, React.ReactNode][] }) {
   return (
     <dl className="fields">
       {items.map(([label, value]) => (
         <div key={label}>
           <dt>{label}</dt>
-          <dd>{value || <span className="muted">Not reported</span>}</dd>
+          <dd>{value || <span className="muted">—</span>}</dd>
         </div>
       ))}
     </dl>
   );
 }
+
 export function Diagnostics({ items }: { items: Diagnostic[] }) {
   return (
     <div className="diagnostics">
@@ -59,6 +63,7 @@ export function Diagnostics({ items }: { items: Diagnostic[] }) {
     </div>
   );
 }
+
 function IdentityFields({ i }: { i: Identity }) {
   return (
     <details className="resource-identity">
@@ -76,6 +81,7 @@ function IdentityFields({ i }: { i: Identity }) {
     </details>
   );
 }
+
 export function Conditions({
   status,
   identity,
@@ -87,7 +93,7 @@ export function Conditions({
   return (
     <div>
       {conditions.length === 0 ? (
-        <p className="empty-inline">No conditions reported by this resource.</p>
+        <p className="empty-inline">No conditions reported.</p>
       ) : (
         conditions.map((c) => (
           <div className="condition" key={c.type}>
@@ -99,8 +105,8 @@ export function Conditions({
               {c.reason} · {c.message}
             </p>
             <small>
-              Transition: {c.lastTransitionTime || "unknown"} · generation{" "}
-              {c.observedGeneration ?? "not reported"}
+              {c.lastTransitionTime || "unknown"} · gen{" "}
+              {c.observedGeneration ?? "?"}
               {c.observedGeneration != null &&
               c.observedGeneration < identity.generation
                 ? " · outdated"
@@ -112,6 +118,7 @@ export function Conditions({
     </div>
   );
 }
+
 function Port({
   peer,
   data,
@@ -136,18 +143,15 @@ function Port({
         items={[
           ["Interface ref", peer.interfaceRef.name],
           ["Desired admin", inface?.spec.adminState || "Unknown"],
-          ["API-reported state", inface?.status.operationState || "Unknown"],
+          ["API operation", inface?.status.operationState || "Unknown"],
           ...(peer.prefix
-            ? [["Ordered south prefix", peer.prefix] as [string, string]]
+            ? [["South prefix", peer.prefix] as [string, string]]
             : []),
           ...(peer.dhcpRelay
             ? [["DHCP relay", peer.dhcpRelay] as [string, string]]
             : []),
         ]}
       />
-      <small>
-        State observation time unknown. No remote endpoint supplied.
-      </small>
       {inface && (
         <details>
           <summary>Interface identity and conditions</summary>
@@ -158,6 +162,7 @@ function Port({
     </div>
   );
 }
+
 export function CellDetail({
   cell,
   data,
@@ -172,24 +177,19 @@ export function CellDetail({
         <h3>Cell configuration</h3>
         <Badge value={cell.binding} />
       </div>
-      <IdentityFields i={c.metadata} />
       <Fields
         items={[
           ["Target Node", c.spec.nodeRef.name],
           ["Cell ID", c.spec.id],
           ["Hostname", c.spec.hostname],
           ["Role label", cell.role || "Absent"],
-          ["API phase", <Badge value={c.status.phase} />],
+          ["Phase", <Badge value={c.status.phase} />],
           ["Loopback IPs", c.spec.ips?.join(", ")],
           ["Summary prefix [0]", c.spec.prefixes?.[0]],
         ]}
       />
-      <p className="note">
-        Active is an API runtime completion marker; it does not confirm
-        convergence.
-      </p>
       <details>
-        <summary>All prefixes in source order</summary>
+        <summary>All prefixes</summary>
         {(c.spec.prefixes || []).map((p, i) => (
           <div className="prefix" key={i}>
             <span>[{i}]</span>
@@ -198,7 +198,7 @@ export function CellDetail({
         ))}
       </details>
       <h3>
-        Fabric-facing peers{" "}
+        Fabric peers{" "}
         <span className="count">
           {cell.peers.filter((p) => p.purpose === "fabric").length}
         </span>
@@ -209,7 +209,7 @@ export function CellDetail({
           <Port peer={p} data={data} key={i} />
         ))}
       <h3>
-        South-facing peers{" "}
+        South peers{" "}
         <span className="count">
           {cell.peers.filter((p) => p.purpose === "south").length}
         </span>
@@ -225,9 +225,14 @@ export function CellDetail({
       <h3>Cell conditions</h3>
       <Conditions status={c.status} identity={c.metadata} />
       <Diagnostics items={cell.diagnostics} />
+      <details className="resource-identity">
+        <summary>Resource identity · {c.metadata.name}</summary>
+        <IdentityFields i={c.metadata} />
+      </details>
     </>
   );
 }
+
 function RegisteredPort({ inface }: { inface: Resource<InterfaceSpec> }) {
   return (
     <details className="registered-port">
@@ -235,18 +240,31 @@ function RegisteredPort({ inface }: { inface: Resource<InterfaceSpec> }) {
         {inface.spec.handle || inface.metadata.name}{" "}
         <Badge value={inface.status.operationState} />
       </summary>
-      <IdentityFields i={inface.metadata} />
       <Fields
         items={[
           ["Node ref", inface.spec.nodeRef.name],
           ["Desired admin", inface.spec.adminState],
-          ["API-reported operation", inface.status.operationState || "Unknown"],
+          ["API operation", inface.status.operationState || "Unknown"],
         ]}
       />
       <Conditions status={inface.status} identity={inface.metadata} />
     </details>
   );
 }
+
+const TABS = [
+  { id: "overview", label: "Overview" },
+  { id: "ports", label: "Ports" },
+  { id: "bgp", label: "BGP" },
+  { id: "lldp", label: "LLDP" },
+  { id: "vlans", label: "VLANs" },
+  { id: "containers", label: "Containers" },
+  { id: "cells", label: "Cell config" },
+  { id: "evidence", label: "Technical" },
+] as const;
+
+type TabId = (typeof TABS)[number]["id"];
+
 export function Inspector({
   sw,
   data,
@@ -264,7 +282,7 @@ export function Inspector({
   observationLimit?: number;
   observationError?: string;
 }) {
-  const [tab, setTab] = useState("overview");
+  const [tab, setTab] = useState<TabId>("overview");
   const [cellKey, setCellKey] = useState("");
   const node = data.nodes.find(
     (n) => key(n.resource.metadata) === sw.association.nodeKey,
@@ -286,6 +304,9 @@ export function Inspector({
     observation?.switchUID === key(sw.resource.metadata)
       ? observation
       : undefined;
+
+  const obsTab = tab === "ports" || tab === "bgp" || tab === "lldp" || tab === "vlans" || tab === "containers";
+
   return (
     <aside className="inspector" aria-label="Switch inspector">
       <div className="inspector-title">
@@ -306,35 +327,157 @@ export function Inspector({
         </button>
       </div>
       <div className="inspector-tabs" role="tablist">
-        {["overview", "cells", "ports", "bgp", "lldp", "vlans", "evidence"].map(
-          (t) => (
-            <button
-              role="tab"
-              aria-selected={tab === t}
-              className={tab === t ? "active" : ""}
-              onClick={() => setTab(t)}
-              key={t}
-            >
-              {t === "cells"
-                ? "Cell config"
-                : t === "bgp"
-                  ? "BGP Sessions"
-                  : t === "lldp"
-                    ? "LLDP"
-                    : t}
-            </button>
-          ),
-        )}
+        {TABS.map((t) => (
+          <button
+            role="tab"
+            aria-selected={tab === t.id}
+            className={tab === t.id ? "active" : ""}
+            onClick={() => setTab(t.id)}
+            key={t.id}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
       <div className="inspector-body">
-        {(tab === "ports" ||
-          tab === "bgp" ||
-          tab === "lldp" ||
-          tab === "vlans") && (
+        {obsTab && (
           <IdentityNotice observation={observation} mode={observationMode} />
         )}
         {observationError && (
           <div className="warning-banner">{observationError}</div>
+        )}
+        {tab === "overview" && (
+          <>
+            <div className="section-heading">
+              <h3>Switch status</h3>
+              <Badge value={sw.resource.status.state} />
+            </div>
+            <Fields
+              items={[
+                [
+                  "Hostname",
+                  sw.resource.spec.hostname ||
+                    sw.resource.metadata.name + " (default)",
+                ],
+                [
+                  "Management",
+                  [
+                    sw.resource.spec.management.host,
+                    sw.resource.spec.management.port,
+                  ]
+                    .filter(Boolean)
+                    .join(":"),
+                ],
+                ["Role", <Badge value={sw.role} />],
+                ["Association", <Badge value={sw.association.state} />],
+              ]}
+            />
+            {(sw.resource.status.firmwareVersion ||
+              sw.resource.status.sku ||
+              sw.resource.status.macAddress) && (
+              <Fields
+                items={[
+                  ["Firmware", sw.resource.status.firmwareVersion],
+                  ["SKU", sw.resource.status.sku],
+                  ["MAC (reported)", sw.resource.status.macAddress],
+                ]}
+              />
+            )}
+            <h3>Fabric Node</h3>
+            {node ? (
+              <>
+                <Fields
+                  items={[
+                    ["Node", node.resource.metadata.name],
+                    ["Cell binding", <Badge value={node.binding} />],
+                    [
+                      "Cell ref",
+                      node.resource.spec.cellRef
+                        ? node.resource.spec.cellRef.namespace +
+                          "/" +
+                          node.resource.spec.cellRef.name
+                        : "No cellRef",
+                    ],
+                  ]}
+                />
+                <button
+                  className="inline-action"
+                  onClick={() => setTab("cells")}
+                >
+                  View Cell configuration <ChevronRight size={15} />
+                </button>
+              </>
+            ) : (
+              <p className="empty-inline">
+                No verified Node association.{" "}
+                {sw.association.candidates.length > 0
+                  ? "Candidates: " + sw.association.candidates.join(", ")
+                  : "No candidates found."}
+              </p>
+            )}
+            <details>
+              <summary>Conditions and diagnostics</summary>
+              <h3>Switch conditions</h3>
+              <Conditions
+                status={sw.resource.status}
+                identity={sw.resource.metadata}
+              />
+              {node && (
+                <>
+                  <h3>Node conditions</h3>
+                  <Conditions
+                    status={node.resource.status}
+                    identity={node.resource.metadata}
+                  />
+                </>
+              )}
+              <Diagnostics items={sw.diagnostics} />
+            </details>
+            <details>
+              <summary>Resource labels</summary>
+              {Object.entries(sw.resource.metadata.labels || {}).map(
+                ([k, v]) => (
+                  <div className="label-item" key={k}>
+                    <code>{k}</code>
+                    <span>{v}</span>
+                  </div>
+                ),
+              )}
+            </details>
+          </>
+        )}
+        {tab === "ports" && (
+          <>
+            {trustedObservation && (
+              <ObservedPorts
+                observation={trustedObservation}
+                data={data}
+                sw={sw}
+                limit={observationLimit}
+              />
+            )}
+            {!trustedObservation && (
+              <>
+                <h3>Declared Switch ports ({sw.declaredPorts.length})</h3>
+                {sw.declaredPorts.map((p) => (
+                  <div className="declared-port" key={p.name}>
+                    <strong>{p.name}</strong>
+                    <Badge value={p.resolution} />
+                  </div>
+                ))}
+                {sw.declaredPorts.length === 0 && (
+                  <p className="empty-inline">No ports declared.</p>
+                )}
+                <h3>Local Fabric Interfaces ({interfaces.length})</h3>
+                {interfaces.map((i) => (
+                  <RegisteredPort inface={i} key={key(i.metadata)} />
+                ))}
+                {interfaces.length === 0 && (
+                  <p className="empty-inline">No resolved local Interfaces.</p>
+                )}
+              </>
+            )}
+          </>
         )}
         {tab === "bgp" && trustedObservation && (
           <BGPPanel observation={trustedObservation} limit={observationLimit} />
@@ -351,125 +494,21 @@ export function Inspector({
             limit={observationLimit}
           />
         )}
-        {tab === "overview" && (
-          <>
-            <div className="section-heading">
-              <h3>Provisioning declaration</h3>
-              <Badge value={sw.resource.status.state} />
-            </div>
-            <p className="note">
-              Ready means accepted by the controller. Bootstrap completion and
-              device reachability are not confirmed.
-            </p>
-            <IdentityFields i={sw.resource.metadata} />
-            <Fields
-              items={[
-                [
-                  "Declared hostname",
-                  sw.resource.spec.hostname ||
-                    sw.resource.metadata.name + " (default)",
-                ],
-                [
-                  "Management",
-                  [
-                    sw.resource.spec.management.host,
-                    sw.resource.spec.management.port,
-                  ]
-                    .filter(Boolean)
-                    .join(":"),
-                ],
-                ["Declared MAC", sw.resource.spec.macAddress],
-                ["Next boot mode", sw.resource.spec.nextBootMode || "None"],
-                ["Association", <Badge value={sw.association.state} />],
-                ["Bound role", <Badge value={sw.role} />],
-              ]}
-            />
-            <h3>Fabric Node</h3>
-            {node ? (
-              <>
-                <IdentityFields i={node.resource.metadata} />
-                <Fields
-                  items={[
-                    ["Name", node.resource.metadata.name],
-                    ["Provider ID", node.resource.spec.providerID],
-                    ["Cell binding", <Badge value={node.binding} />],
-                    [
-                      "Cell ref",
-                      node.resource.spec.cellRef
-                        ? node.resource.spec.cellRef.namespace +
-                          "/" +
-                          node.resource.spec.cellRef.name
-                        : "No cellRef",
-                    ],
-                    ["Referenced Cell UID", node.resource.spec.cellRef?.uid],
-                  ]}
-                />
-                <button
-                  className="inline-action"
-                  onClick={() => setTab("cells")}
-                >
-                  Inspect targeted Cells <ChevronRight size={15} />
-                </button>
-              </>
-            ) : (
-              <p className="empty-inline">
-                No verified Node association. Candidates:{" "}
-                {sw.association.candidates.join(", ") || "none"}. See evidence.
-              </p>
-            )}
-            <h3>Switch conditions</h3>
-            <Conditions
-              status={sw.resource.status}
-              identity={sw.resource.metadata}
-            />
-            {node && (
-              <>
-                <h3>Node conditions</h3>
-                <Conditions
-                  status={node.resource.status}
-                  identity={node.resource.metadata}
-                />
-              </>
-            )}
-            <Diagnostics items={sw.diagnostics} />
-            {(sw.resource.status.firmwareVersion ||
-              sw.resource.status.sku ||
-              sw.resource.status.macAddress) && (
-              <>
-                <h3>API-reported device metadata</h3>
-                <Fields
-                  items={[
-                    ["Firmware", sw.resource.status.firmwareVersion],
-                    ["SKU", sw.resource.status.sku],
-                    ["Reported MAC", sw.resource.status.macAddress],
-                  ]}
-                />
-                <p className="note">
-                  Observation age unknown; these fields may be left over from
-                  the legacy agent.
-                </p>
-              </>
-            )}
-            <details>
-              <summary>Resource labels</summary>
-              {Object.entries(sw.resource.metadata.labels || {}).map(
-                ([k, v]) => (
-                  <div className="label-item" key={k}>
-                    <code>{k}</code>
-                    <span>{v}</span>
-                  </div>
-                ),
-              )}
-            </details>
-          </>
+        {tab === "containers" && trustedObservation && (
+          <ContainersPanel
+            observation={trustedObservation}
+            limit={observationLimit}
+          />
+        )}
+        {tab === "containers" && !trustedObservation && (
+          <p className="empty-inline">No verified observation for this switch.</p>
         )}
         {tab === "cells" && (
           <>
             {node?.resource.spec.cellRef && (
               <div className="note">
                 Node cellRef: {node.resource.spec.cellRef.namespace}/
-                {node.resource.spec.cellRef.name} · {node.binding}. UID:{" "}
-                {node.resource.spec.cellRef.uid}
+                {node.resource.spec.cellRef.name} · {node.binding}
               </div>
             )}
             <label className="field-label" htmlFor="cell-selector">
@@ -510,47 +549,6 @@ export function Inspector({
             <Diagnostics items={node?.diagnostics || []} />
           </>
         )}
-        {tab === "ports" && (
-          <>
-            {trustedObservation && (
-              <ObservedPorts
-                observation={trustedObservation}
-                data={data}
-                sw={sw}
-                limit={observationLimit}
-              />
-            )}
-            <h3>Declared Switch ports ({sw.declaredPorts.length})</h3>
-            <p className="note">
-              Port declarations are separate from Fabric registration. Matches
-              require a unique local SONiC handle.
-            </p>
-            {sw.declaredPorts.map((p) => (
-              <div className="declared-port" key={p.name}>
-                <strong>{p.name}</strong>
-                <Badge value={p.resolution} />
-              </div>
-            ))}
-            {sw.declaredPorts.length === 0 && (
-              <p className="empty-inline">No ports declared.</p>
-            )}
-            <h3>Local Fabric Interfaces ({interfaces.length})</h3>
-            <p className="note">
-              Desired admin and API-reported operation are separate. Observation
-              time is unknown.
-            </p>
-            {interfaces.map((i) => (
-              <RegisteredPort inface={i} key={key(i.metadata)} />
-            ))}
-            {interfaces.length === 0 && (
-              <p className="empty-inline">No resolved local Interfaces.</p>
-            )}
-            <button className="inline-action" onClick={() => setTab("cells")}>
-              View configured peer purpose and prefixes{" "}
-              <ChevronRight size={15} />
-            </button>
-          </>
-        )}
         {tab === "evidence" && (
           <>
             <h3>Association evidence</h3>
@@ -563,27 +561,24 @@ export function Inspector({
               </div>
             ))}
             {sw.association.evidence.length === 0 && (
-              <p className="empty-inline">
-                No recognized naming or bootstrap declaration evidence.
-              </p>
-            )}
-            <h3>Diagnostics</h3>
-            <Diagnostics items={sw.diagnostics} />
-            {sw.diagnostics.length === 0 && (
-              <p className="empty-inline">
-                No association diagnostics. This is not a network health
-                verdict.
-              </p>
+              <p className="empty-inline">No association evidence.</p>
             )}
             <h3>Role provenance</h3>
             <p className="note">
               {sw.roleCellKey
-                ? "Role comes from the label on UID-validated bound Cell " +
-                  data.cells.find(
+                ? "Role from UID-validated bound Cell: " +
+                  (data.cells.find(
                     (c) => key(c.resource.metadata) === sw.roleCellKey,
-                  )?.resource.metadata.name
+                  )?.resource.metadata.name ?? sw.roleCellKey)
                 : "No role established from a valid bound Cell."}
             </p>
+            <h3>Declared MAC</h3>
+            <p className="note">{sw.resource.spec.macAddress || "Not specified"}</p>
+            <h3>Resource identities</h3>
+            <IdentityFields i={sw.resource.metadata} />
+            {node && <IdentityFields i={node.resource.metadata} />}
+            <h3>Diagnostics</h3>
+            <Diagnostics items={sw.diagnostics} />
           </>
         )}
       </div>

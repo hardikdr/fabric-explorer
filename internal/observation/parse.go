@@ -321,3 +321,39 @@ func firstNonempty(a, b string) string {
 	}
 	return b
 }
+
+// ParseContainers parses one JSON object per line from `docker ps -a --format '{{json .}}'`.
+func ParseContainers(b []byte) ([]Container, error) {
+	var out []Container
+	for _, line := range strings.Split(strings.TrimSpace(string(b)), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		var m map[string]any
+		decoder := json.NewDecoder(strings.NewReader(line))
+		decoder.UseNumber()
+		if decoder.Decode(&m) != nil {
+			continue
+		}
+		id := clean(text(m["ID"]))
+		name := clean(text(m["Names"]))
+		if id == "" || name == "" {
+			continue
+		}
+		c := Container{
+			ID:         id,
+			Name:       name,
+			Image:      clean(text(m["Image"])),
+			State:      clean(text(m["State"])),
+			Status:     clean(text(m["Status"])),
+			CreatedAt:  clean(text(m["CreatedAt"])),
+			RunningFor: clean(text(m["RunningFor"])),
+		}
+		out = append(out, c)
+	}
+	if len(out) == 0 {
+		return out, nil
+	}
+	return out, nil
+}

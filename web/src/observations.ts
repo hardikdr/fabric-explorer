@@ -38,6 +38,18 @@ export interface LLDPNeighbor {
   reportedAge?: string;
   advertisedTTLSeconds?: number;
 }
+export interface ObservedContainer {
+  id: string;
+  name: string;
+  image: string;
+  state: string;
+  status: string;
+  createdAt: string;
+  runningFor: string;
+  restartCount?: number;
+  exitCode?: number;
+  oomKilled?: boolean;
+}
 export interface ObservedSwitch {
   target: {
     resourceName: string;
@@ -60,6 +72,7 @@ export interface ObservedSwitch {
   bgpDetails?: Domain<BGPSession[]>;
   lldp: Domain<LLDPNeighbor[]>;
   vlans: Domain<{ id: number; member?: string; tagging?: string }[]>;
+  containers: Domain<ObservedContainer[]>;
 }
 export interface PhysicalLink {
   source: string;
@@ -149,7 +162,7 @@ export function eligibleLinks(
   snapshot?: Observations,
   now = Date.now(),
 ): PhysicalLink[] {
-  if (!snapshot || snapshot.mode !== "observed") return [];
+  if (!snapshot || (snapshot.mode !== "observed" && snapshot.mode !== "ssh-lab")) return [];
   const eligible = new Set(
     snapshot.switches
       .filter(

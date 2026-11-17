@@ -26,7 +26,7 @@ function FitViewport({ contentKey }: { contentKey: string }) {
     const timer = setTimeout(() => {
       // fitView queues until node measurements are available, including with
       // controlled nodes whose public model deliberately omits DOM dimensions.
-      void fitView({ padding: 0.12, maxZoom: 1.15, duration: 0 });
+      void fitView({ padding: 0.14, maxZoom: 1.1, duration: 0 });
     }, 60);
     return () => clearTimeout(timer);
   }, [width, height, viewportInitialized, contentKey, fitView]);
@@ -56,11 +56,9 @@ function SwitchNode({ data, selected }: NodeProps<Node<{ sw: SwitchView }>>) {
       </div>
       <strong>{sw.displayName}</strong>
       <div className="node-bottom">
-        <span>{sw.resource.spec.management.host || "Management unknown"}</span>
+        <span>{sw.resource.spec.management.host || "Mgmt unknown"}</span>
         <span className="node-mark">
-          {sw.association.state === "associated"
-            ? "Associated"
-            : "? " + sw.association.state}
+          {sw.association.state === "associated" ? "Associated" : sw.association.state}
         </span>
       </div>
     </div>
@@ -91,54 +89,59 @@ export function Topology({
   physical?: boolean;
 }) {
   const nodes = useMemo(() => layout(switches, selected), [switches, selected]);
+  const edges = links
+    .filter(
+      (l) =>
+        switches.some((s) => key(s.resource.metadata) === l.source) &&
+        switches.some((s) => key(s.resource.metadata) === l.target),
+    )
+    .map((link) => {
+      const sourceRole = switches.find(
+        (s) => key(s.resource.metadata) === link.source,
+      )?.role;
+      const targetRole = switches.find(
+        (s) => key(s.resource.metadata) === link.target,
+      )?.role;
+      const l =
+        sourceRole === "leaf" && targetRole === "spine"
+          ? {
+              ...link,
+              source: link.target,
+              target: link.source,
+              sourcePort: link.targetPort,
+              targetPort: link.sourcePort,
+            }
+          : link;
+      const isSelected =
+        selected === l.source || selected === l.target;
+      const isDimmed = selected && !isSelected;
+      return {
+        id: l.source + l.sourcePort + l.target + l.targetPort,
+        source: l.source,
+        target: l.target,
+        label: isSelected ? l.sourcePort + " ↔ " + l.targetPort : undefined,
+        ariaLabel: l.sourcePort + " to " + l.targetPort + ": " + l.evidence,
+        style: {
+          stroke: isDimmed
+            ? "var(--border)"
+            : isSelected
+              ? "var(--teal)"
+              : "var(--teal)",
+          strokeWidth: isSelected ? 3 : 2,
+          strokeDasharray: l.evidence.startsWith("one-sided") ? "6 4" : undefined,
+          opacity: isDimmed ? 0.3 : 1,
+          transition: "opacity 0.15s, stroke-width 0.15s",
+        },
+        labelStyle: { fill: "var(--text)", fontSize: 10, fontWeight: 600 },
+        labelBgStyle: { fill: "var(--surface)", rx: 4 },
+        labelBgPadding: [4, 6] as [number, number],
+      };
+    });
   return (
     <div className="flow">
       <ReactFlow
         nodes={nodes}
-        edges={links
-          .filter(
-            (l) =>
-              switches.some((s) => key(s.resource.metadata) === l.source) &&
-              switches.some((s) => key(s.resource.metadata) === l.target),
-          )
-          .map((link) => {
-            const sourceRole = switches.find(
-              (s) => key(s.resource.metadata) === link.source,
-            )?.role;
-            const targetRole = switches.find(
-              (s) => key(s.resource.metadata) === link.target,
-            )?.role;
-            const l =
-              sourceRole === "leaf" && targetRole === "spine"
-                ? {
-                    ...link,
-                    source: link.target,
-                    target: link.source,
-                    sourcePort: link.targetPort,
-                    targetPort: link.sourcePort,
-                  }
-                : link;
-            return {
-              id: l.source + l.sourcePort + l.target + l.targetPort,
-              source: l.source,
-              target: l.target,
-              label:
-                selected === l.source || selected === l.target
-                  ? l.sourcePort + " ↔ " + l.targetPort
-                  : undefined,
-              ariaLabel:
-                l.sourcePort + " to " + l.targetPort + ": " + l.evidence,
-              style: {
-                stroke: "var(--teal)",
-                strokeWidth: 2,
-                strokeDasharray: l.evidence.startsWith("one-sided")
-                  ? "6 4"
-                  : undefined,
-              },
-              labelStyle: { fill: "var(--text)", fontSize: 10 },
-              labelBgStyle: { fill: "var(--surface)" },
-            };
-          })}
+        edges={edges}
         nodeTypes={nodeTypes}
         onNodeClick={(_, node) => {
           if (node.type === "switch") onSelect(node.id);
@@ -148,7 +151,7 @@ export function Topology({
         connectOnClick={false}
         elementsSelectable
         fitView
-        fitViewOptions={{ padding: 0.12, maxZoom: 1.15 }}
+        fitViewOptions={{ padding: 0.14, maxZoom: 1.1 }}
         minZoom={0.25}
         maxZoom={2}
         proOptions={{ hideAttribution: false }}
@@ -173,7 +176,7 @@ export function Topology({
       )}
       <div className="graph-caption">
         {physical
-          ? "Observed LLDP evidence · current eligible samples only"
+          ? "Observed LLDP · current eligible samples only"
           : "Roles from bound Cells · no physical links"}
       </div>
     </div>

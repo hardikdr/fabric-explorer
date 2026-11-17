@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/ironcore-dev/fabric-explorer/internal/correlate"
 	"github.com/ironcore-dev/fabric-explorer/internal/model"
+	"github.com/ironcore-dev/fabric-explorer/internal/observation"
 	"github.com/ironcore-dev/fabric-explorer/internal/source"
 	"net/http"
 	"net/http/httptest"
@@ -103,5 +104,62 @@ func TestObservationEndpointReadOnly(t *testing.T) {
 	h.ServeHTTP(w, httptest.NewRequest("GET", "/api/v1/commands", nil))
 	if w.Code != 404 {
 		t.Fatal("unexpected command endpoint")
+	}
+}
+
+func TestContainerLogsEndpoint(t *testing.T) {
+	f, e := source.LoadFixture("../../testdata/kubernetes/clos.json")
+	if e != nil {
+		t.Fatal(e)
+	}
+	s := source.NewStore(f, correlate.Config{}, "fixture", "test", time.Second, time.Second)
+	s.Refresh(context.Background())
+	h := Handler(s, "")
+
+	// No observation store → 503.
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest("GET", "/api/v1/containers/logs?switchUID=x&containerID=y", nil))
+	if w.Code != 503 {
+		t.Fatalf("expected 503 without obs store, got %d", w.Code)
+	}
+
+	// With a nil observation store: same 503.
+	h2 := Handler(s, "", nil)
+	w = httptest.NewRecorder()
+	h2.ServeHTTP(w, httptest.NewRequest("GET", "/api/v1/containers/logs?switchUID=x&containerID=y", nil))
+	if w.Code != 503 {
+		t.Fatalf("expected 503 with nil obs store, got %d", w.Code)
+	}
+
+	// With an obs store (reader=nil → no SSH): validating missing params.
+	obsStore := observation.NewStore(nil, s, "fixture", time.Second, time.Second, 10*time.Second)
+	h3 := Handler(s, "", obsStore)
+
+	// Missing switchUID → 400.
+	w = httptest.NewRecorder()
+	h3.ServeHTTP(w, httptest.NewRequest("GET", "/api/v1/containers/logs?containerID=abc", nil))
+	if w.Code != 400 {
+		t.Fatalf("expected 400 for missing switchUID, got %d", w.Code)
+	}
+
+	// Missing containerID → 400.
+	w = httptest.NewRecorder()
+	h3.ServeHTTP(w, httptest.NewRequest("GET", "/api/v1/containers/logs?switchUID=abc", nil))
+	if w.Code != 400 {
+		t.Fatalf("expected 400 for missing containerID, got %d", w.Code)
+	}
+
+	// Unknown switchUID → 404 (not in observation snapshot).
+	w = httptest.NewRecorder()
+	h3.ServeHTTP(w, httptest.NewRequest("GET", "/api/v1/containers/logs?switchUID=nosuchuid&containerID=abc", nil))
+	if w.Code != 404 {
+		t.Fatalf("expected 404 for unknown switchUID, got %d", w.Code)
+	}
+
+	// POST → 405 (write rejected).
+	w = httptest.NewRecorder()
+	h3.ServeHTTP(w, httptest.NewRequest("POST", "/api/v1/containers/logs?switchUID=x&containerID=y", strings.NewReader("exec")))
+	if w.Code != 405 {
+		t.Fatalf("expected 405 for POST, got %d", w.Code)
 	}
 }
